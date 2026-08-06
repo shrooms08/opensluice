@@ -36,6 +36,18 @@
   --ot-accent-dim-65: rgba(10, 10, 10, 0.65); /* ink at 65% on orange */
   --ot-accent-dim-55: rgba(10, 10, 10, 0.55); /* ink at 55% on orange */
 
+  /*
+   * Split-route bar steps (OpenSluice surface 1). The privileged hue DIMMED,
+   * never new hues: leg 1 takes the accent, legs 2 and 3 step down so a split
+   * reads as one orange quantity divided, not three competing colors.
+   */
+  --ot-accent-step-2: #c97a1a;
+  --ot-accent-step-3: #8a5a1e;
+  /* Amber underline on the amount input at a limit — nothing failed. */
+  --ot-amber-underline: #6b4a1a;
+  /* Best-rate row wash on the white sheet (marketplace book). */
+  --ot-sheet-best-row: #fff8ef;
+
   --ot-green: #3f9e6a; /* paid/confirmed */
   --ot-green-dark-surface: #57b380; /* green on dark surfaces */
   --ot-green-bright: #6fcf97; /* confirmed tint fg */

@@ -63,17 +63,17 @@ async function mineBlocks(blocks: number): Promise<void> {
 }
 
 /** Two LPs whose swap_in offers force a 60k/40k split on a 100k quote. */
-async function seedSplitPair(): Promise<{ fjord: TestLp; meridian: TestLp }> {
-  const fjord = await setupLp(h, "Fjord Liquidity", {
+async function seedSplitPair(): Promise<{ penstock: TestLp; headwater: TestLp }> {
+  const penstock = await setupLp(h, "Penstock", {
     fundOffchainSats: "60000",
     fundOnchainSats: "500000",
     swapIn: { capacitySats: "60000", feeBps: 10, minSats: "1000", maxSats: "60000" },
   });
-  const meridian = await setupLp(h, "Meridian Bridge", {
+  const headwater = await setupLp(h, "Headwater", {
     fundOffchainSats: "80000",
     swapIn: { capacitySats: "80000", feeBps: 25, feeFixedSats: "10", minSats: "1000", maxSats: "80000" },
   });
-  return { fjord, meridian };
+  return { penstock, headwater };
 }
 
 describe("LP endpoint auth", () => {
@@ -116,73 +116,73 @@ describe("GET /api/lp/me", () => {
 
 describe("cross-LP isolation — every endpoint, two seeded LPs", () => {
   it("LP A's key never sees LP B's rows anywhere", async () => {
-    const { fjord, meridian } = await seedSplitPair();
+    const { penstock, headwater } = await seedSplitPair();
 
-    // One split swap touches both LPs; settle only Fjord's leg so exposure,
+    // One split swap touches both LPs; settle only Penstock's leg so exposure,
     // earnings, and history all have direction-specific content to leak.
     const quote = await requestQuote(h, "swap_in", "100000");
     const swap = await acceptQuoteHttp(h, quote.quoteId, "mocktachi1pisolation");
-    const fjordLeg = swap.legs.find((l) => l.lpId === fjord.id)!;
-    await payOnchain(fjordLeg.payTo, fjordLeg.amountSats);
+    const penstockLeg = swap.legs.find((l) => l.lpId === penstock.id)!;
+    await payOnchain(penstockLeg.payTo, penstockLeg.amountSats);
     await mineBlocks(3);
 
     // me: each key resolves to its own identity.
-    expect((await lpGet<LpMeDTO>("/api/lp/me", fjord.apiKey)).id).toBe(fjord.id);
-    expect((await lpGet<LpMeDTO>("/api/lp/me", meridian.apiKey)).id).toBe(meridian.id);
+    expect((await lpGet<LpMeDTO>("/api/lp/me", penstock.apiKey)).id).toBe(penstock.id);
+    expect((await lpGet<LpMeDTO>("/api/lp/me", headwater.apiKey)).id).toBe(headwater.id);
 
-    // balances: Fjord settled its 60k leg (+60000 onchain, -59940 offchain);
-    // Meridian's books are untouched and still show its own 40k lock.
-    const fb = await lpGet<LpBalancesDTO>("/api/lp/balances", fjord.apiKey);
+    // balances: Penstock settled its 60k leg (+60000 onchain, -59940 offchain);
+    // Headwater's books are untouched and still show its own 40k lock.
+    const fb = await lpGet<LpBalancesDTO>("/api/lp/balances", penstock.apiKey);
     expect(fb).toMatchObject({
       onchainSats: "560000", // 500000 funded + 60000 deposit
       offchainSats: "60", // 60000 funded - 59940 payout
       locked: { swapIn: "0", swapOut: "0" },
     });
-    const mb = await lpGet<LpBalancesDTO>("/api/lp/balances", meridian.apiKey);
+    const mb = await lpGet<LpBalancesDTO>("/api/lp/balances", headwater.apiKey);
     expect(mb).toMatchObject({
       onchainSats: "0",
       offchainSats: "80000",
       locked: { swapIn: "40000", swapOut: "0" },
     });
 
-    // exposure: only Meridian still has an open leg — and only its own.
-    const fe = await lpGet<LpExposureDTO>("/api/lp/exposure", fjord.apiKey);
+    // exposure: only Headwater still has an open leg — and only its own.
+    const fe = await lpGet<LpExposureDTO>("/api/lp/exposure", penstock.apiKey);
     expect(fe.rows).toHaveLength(0);
-    const me2 = await lpGet<LpExposureDTO>("/api/lp/exposure", meridian.apiKey);
+    const me2 = await lpGet<LpExposureDTO>("/api/lp/exposure", headwater.apiKey);
     expect(me2.rows).toHaveLength(1);
     expect(me2.rows[0]!.amountSats).toBe("40000");
 
-    // earnings: Fjord earned its leg fee, Meridian earned nothing yet.
-    const fEarn = await lpGet<LpEarningsDTO>("/api/lp/earnings", fjord.apiKey);
+    // earnings: Penstock earned its leg fee, Headwater earned nothing yet.
+    const fEarn = await lpGet<LpEarningsDTO>("/api/lp/earnings", penstock.apiKey);
     expect(fEarn.rows).toHaveLength(1);
     expect(fEarn.rows[0]!.feeSats).toBe("60");
-    const mEarn = await lpGet<LpEarningsDTO>("/api/lp/earnings", meridian.apiKey);
+    const mEarn = await lpGet<LpEarningsDTO>("/api/lp/earnings", headwater.apiKey);
     expect(mEarn.rows).toHaveLength(0);
     expect(mEarn.totalFeesSats).toBe("0");
 
     // history: same boundary.
-    const fHist = await lpGet<LpHistoryDTO>("/api/lp/history", fjord.apiKey);
+    const fHist = await lpGet<LpHistoryDTO>("/api/lp/history", penstock.apiKey);
     expect(fHist.rows).toHaveLength(1);
     expect(fHist.rows[0]!.amountSats).toBe("60000");
-    const mHist = await lpGet<LpHistoryDTO>("/api/lp/history", meridian.apiKey);
+    const mHist = await lpGet<LpHistoryDTO>("/api/lp/history", headwater.apiKey);
     expect(mHist.rows).toHaveLength(0);
   });
 
   it("swap refs are truncated everywhere — LPs never receive the user's full swap capability", async () => {
-    const { fjord } = await seedSplitPair();
+    const { penstock } = await seedSplitPair();
     const quote = await requestQuote(h, "swap_in", "100000");
     const swap = await acceptQuoteHttp(h, quote.quoteId, "mocktachi1prefcheck");
-    const fjordLeg = swap.legs.find((l) => l.lpId === fjord.id)!;
+    const penstockLeg = swap.legs.find((l) => l.lpId === penstock.id)!;
 
-    const exposure = await lpGet<LpExposureDTO>("/api/lp/exposure", fjord.apiKey);
+    const exposure = await lpGet<LpExposureDTO>("/api/lp/exposure", penstock.apiKey);
     expect(exposure.rows[0]!.swapRef).toContain("…");
     expect(exposure.rows[0]!.swapRef.length).toBeLessThan(swap.id.length);
 
-    await payOnchain(fjordLeg.payTo, fjordLeg.amountSats);
+    await payOnchain(penstockLeg.payTo, penstockLeg.amountSats);
     await mineBlocks(3);
 
-    const earnings = await lpGet<LpEarningsDTO>("/api/lp/earnings", fjord.apiKey);
-    const history = await lpGet<LpHistoryDTO>("/api/lp/history", fjord.apiKey);
+    const earnings = await lpGet<LpEarningsDTO>("/api/lp/earnings", penstock.apiKey);
+    const history = await lpGet<LpHistoryDTO>("/api/lp/history", penstock.apiKey);
     for (const ref of [earnings.rows[0]!.swapRef, history.rows[0]!.swapRef]) {
       expect(ref).not.toBe(swap.id);
       expect(ref).toContain("…");
@@ -192,14 +192,14 @@ describe("cross-LP isolation — every endpoint, two seeded LPs", () => {
 
 describe("exposure reflects locks", () => {
   it("split accept shows each LP its leg; settling one moves it to history/earnings", async () => {
-    const { fjord, meridian } = await seedSplitPair();
+    const { penstock, headwater } = await seedSplitPair();
     const quote = await requestQuote(h, "swap_in", "100000");
     const swap = await acceptQuoteHttp(h, quote.quoteId, "mocktachi1pexposure");
-    const fjordLeg = swap.legs.find((l) => l.lpId === fjord.id)!;
-    const meridianLeg = swap.legs.find((l) => l.lpId === meridian.id)!;
+    const penstockLeg = swap.legs.find((l) => l.lpId === penstock.id)!;
+    const headwaterLeg = swap.legs.find((l) => l.lpId === headwater.id)!;
 
     // Both LPs see exactly their own in-flight leg after accept.
-    let fe = await lpGet<LpExposureDTO>("/api/lp/exposure", fjord.apiKey);
+    let fe = await lpGet<LpExposureDTO>("/api/lp/exposure", penstock.apiKey);
     expect(fe.rows).toHaveLength(1);
     expect(fe.rows[0]).toMatchObject({
       direction: "swap_in",
@@ -212,36 +212,36 @@ describe("exposure reflects locks", () => {
     expect(fe.rows[0]!.swapRef).not.toBe(swap.id);
     expect(fe.rows[0]!.swapRef.startsWith(swap.id.slice(0, 8))).toBe(true);
 
-    let me = await lpGet<LpExposureDTO>("/api/lp/exposure", meridian.apiKey);
+    let me = await lpGet<LpExposureDTO>("/api/lp/exposure", headwater.apiKey);
     expect(me.rows).toHaveLength(1);
     expect(me.rows[0]!.amountSats).toBe("40000");
 
-    // Fjord's leg settles fully: it leaves exposure and lands in history +
-    // earnings while Meridian's untouched leg remains open.
-    await payOnchain(fjordLeg.payTo, "60000");
+    // Penstock's leg settles fully: it leaves exposure and lands in history +
+    // earnings while Headwater's untouched leg remains open.
+    await payOnchain(penstockLeg.payTo, "60000");
     await mineBlocks(3);
 
-    fe = await lpGet<LpExposureDTO>("/api/lp/exposure", fjord.apiKey);
+    fe = await lpGet<LpExposureDTO>("/api/lp/exposure", penstock.apiKey);
     expect(fe.rows).toHaveLength(0);
     expect(fe.totalLockedSats).toBe("0");
 
-    const fHist = await lpGet<LpHistoryDTO>("/api/lp/history", fjord.apiKey);
+    const fHist = await lpGet<LpHistoryDTO>("/api/lp/history", penstock.apiKey);
     expect(fHist.rows).toHaveLength(1);
     expect(fHist.rows[0]).toMatchObject({ status: "settled", feeSats: "60" });
 
-    const fEarn = await lpGet<LpEarningsDTO>("/api/lp/earnings", fjord.apiKey);
+    const fEarn = await lpGet<LpEarningsDTO>("/api/lp/earnings", penstock.apiKey);
     expect(fEarn.rows).toHaveLength(1);
     expect(fEarn.totalFeesSats).toBe("60");
 
-    me = await lpGet<LpExposureDTO>("/api/lp/exposure", meridian.apiKey);
+    me = await lpGet<LpExposureDTO>("/api/lp/exposure", headwater.apiKey);
     expect(me.rows).toHaveLength(1);
     expect(me.rows[0]!.status).toBe("pending"); // still awaiting the user
 
-    // Meridian's leg gets paid and partially confirmed: exposure shows the
+    // Headwater's leg gets paid and partially confirmed: exposure shows the
     // live confirmation count while the leg is still in flight.
-    await payOnchain(meridianLeg.payTo, "40000");
+    await payOnchain(headwaterLeg.payTo, "40000");
     await mineBlocks(2); // 2 of the 3 mock confirmations
-    me = await lpGet<LpExposureDTO>("/api/lp/exposure", meridian.apiKey);
+    me = await lpGet<LpExposureDTO>("/api/lp/exposure", headwater.apiKey);
     expect(me.rows).toHaveLength(1); // still confirming — still exposed
     expect(me.rows[0]!.status).toBe("seen");
     expect(me.rows[0]!.confirmations).toBe(2);
@@ -250,7 +250,7 @@ describe("exposure reflects locks", () => {
 
 describe("earnings math", () => {
   it("totals match the LP ledger's fee rows exactly", async () => {
-    const { fjord, meridian } = await seedSplitPair();
+    const { penstock, headwater } = await seedSplitPair();
     const quote = await requestQuote(h, "swap_in", "100000");
     const swap = await acceptQuoteHttp(h, quote.quoteId, "mocktachi1pearnings");
 
@@ -259,7 +259,7 @@ describe("earnings math", () => {
     }
     await mineBlocks(3);
 
-    for (const lp of [fjord, meridian]) {
+    for (const lp of [penstock, headwater]) {
       const earnings = await lpGet<LpEarningsDTO>("/api/lp/earnings", lp.apiKey);
 
       // The ledger is the source of truth: one leg's four swap rows sum to
@@ -277,8 +277,8 @@ describe("earnings math", () => {
     }
 
     // Both LPs' totals together equal exactly what the user was quoted.
-    const fEarn = await lpGet<LpEarningsDTO>("/api/lp/earnings", fjord.apiKey);
-    const mEarn = await lpGet<LpEarningsDTO>("/api/lp/earnings", meridian.apiKey);
+    const fEarn = await lpGet<LpEarningsDTO>("/api/lp/earnings", penstock.apiKey);
+    const mEarn = await lpGet<LpEarningsDTO>("/api/lp/earnings", headwater.apiKey);
     expect(BigInt(fEarn.totalFeesSats) + BigInt(mEarn.totalFeesSats)).toBe(
       BigInt(quote.totalFeeSats),
     );
@@ -387,12 +387,12 @@ describe("PUT /api/lp/liquidity validation", () => {
 
 describe("marketplace bestRate marker", () => {
   it("marks exactly the entry the router would drain first, per direction", async () => {
-    await seedSplitPair(); // Fjord 10 bps beats Meridian 25 bps + 10 fixed
+    await seedSplitPair(); // Penstock 10 bps beats Headwater 25 bps + 10 fixed
     const market = await getMarketplace(h);
 
     const flags = market.swapIn.map((e) => ({ name: e.name, bestRate: e.bestRate }));
     expect(flags.filter((f) => f.bestRate)).toEqual([
-      { name: "Fjord Liquidity", bestRate: true },
+      { name: "Penstock", bestRate: true },
     ]);
     expect(market.swapOut.every((e) => !e.bestRate)).toBe(true);
     // estSeconds rides along for the marketplace page.

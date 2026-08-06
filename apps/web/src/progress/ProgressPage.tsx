@@ -8,7 +8,7 @@ export function ProgressPage({ swapId }: { swapId: string }) {
   const [payingLeg, setPayingLeg] = useState<number | null>(null);
 
   useEffect(() => {
-    document.title = `Swap — ${truncateId(swapId)}`;
+    document.title = `Swap — ${truncateId(swapId)} · OpenSluice`;
   }, [swapId]);
 
   const onPayLeg = async (index: number) => {

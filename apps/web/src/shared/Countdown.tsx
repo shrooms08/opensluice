@@ -12,30 +12,34 @@ export function useNow(): number {
 }
 
 /**
- * v2 countdown: label + digits + depletion bar; shifts amber under the
- * urgency threshold (class swap only, digits pulse). `createdAt` scales the
- * bar. `urgentBelowMs` defaults to the checkout's 2:00; the quote panel
- * passes a tighter one for its 60s window.
+ * v2 countdown: label + digits + depletion bar. Escalates by class swap only,
+ * so the timer never moves position: quiet gray → amber under `urgentBelowMs`
+ * → red pulse under `criticalBelowMs`. `createdAt` scales the bar.
+ * `urgentBelowMs` defaults to the checkout's 2:00; the quote panel passes a
+ * tighter one for its 60s window, the funding countdown passes 5:00 / 1:00.
  */
 export function Countdown({
   expiresAt,
   createdAt,
   label = "Expires in",
   urgentBelowMs = 2 * 60 * 1000,
+  criticalBelowMs,
 }: {
   expiresAt: number;
   createdAt: number;
   label?: string;
   urgentBelowMs?: number;
+  criticalBelowMs?: number;
 }) {
   const now = useNow();
   const remaining = Math.max(0, expiresAt - now);
   const total = Math.max(1, expiresAt - createdAt);
   const pct = Math.max(0, Math.min(100, (remaining / total) * 100));
-  const urgent = remaining < urgentBelowMs;
+  const critical = criticalBelowMs !== undefined && remaining < criticalBelowMs;
+  const urgent = !critical && remaining < urgentBelowMs;
 
   return (
-    <div className={urgent ? "count is-urgent" : "count"}>
+    <div className={`count${urgent ? " is-urgent" : ""}${critical ? " is-critical" : ""}`}>
       <div className="count-row">
         <span>{label}</span>
         <span className="digits">{formatCountdown(remaining)}</span>

@@ -22,19 +22,6 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---- wordmark: "Open" text + "Sluice" accent, text only (no mark yet) ------ */
-
-.os-wordmark {
-  font: 700 18px var(--ot-font-display);
-  letter-spacing: -0.03em;
-  color: var(--ot-text);
-  text-decoration: none;
-}
-
-.os-wordmark .accent {
-  color: var(--ot-accent);
-}
-
 /* ---- buttons (tokens: button matrix) --------------------------------------- */
 
 .btn-primary {
@@ -306,12 +293,19 @@ body {
   color: var(--ot-amber);
 }
 
-.count.is-urgent .count-row .digits {
-  animation: ot-pulse 1s ease-in-out infinite;
-}
-
 .count.is-urgent .count-fill {
   background: var(--ot-amber);
+}
+
+/* Last minute: red, and the bar itself pulses. Position never shifts. */
+.count.is-critical .count-row,
+.count.is-critical .count-row .digits {
+  color: var(--ot-red);
+}
+
+.count.is-critical .count-fill {
+  background: var(--ot-red);
+  animation: ot-pulse 1s ease-in-out infinite;
 }
 
 /* ---- spinners --------------------------------------------------------------- */
@@ -368,7 +362,7 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .live-chip .dot,
-  .count.is-urgent .count-row .digits,
+  .count.is-critical .count-fill,
   .ot-spinner {
     animation: none;
   }

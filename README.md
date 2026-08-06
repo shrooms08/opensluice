@@ -1,28 +1,45 @@
-# OpenSluice
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/brand/lockup-dark.svg">
+  <img src="docs/brand/lockup-light.svg" alt="OpenSluice" width="260">
+</picture>
 
-OpenSluice is a liquidity-management layer for the Tachi network — Bitcoin's off-chain
-vault/VTXO layer. Users move value between on-chain Bitcoin and off-chain Tachi balance
-instantly, because liquidity providers (LPs) front the funds and absorb the
-timelock/vault commitments. A public marketplace plus a deterministic routing engine
-picks the best LP quotes, splitting across up to three LPs when no single one covers
-the amount.
+**A liquidity marketplace that makes Bitcoin's off-chain layer feel instant.**
 
-**Gate 3 status:** engine + user swap surfaces + the LP dashboard (`/lp`) and public
-marketplace (`/market`). Mock settlement adapter, no Docker, no live Tachi integration.
-Everything below runs against the mock.
+OpenSluice moves value between on-chain Bitcoin and off-chain [Tachi](https://tachi.sh)
+balance in both directions, in seconds, by letting independent liquidity providers front
+the funds and absorb the timelock and vault commitments the user never sees. A public
+marketplace and a deterministic routing engine pick the cheapest execution, splitting a
+swap across up to three providers when no single one can cover it. Users get plain
+language and real numbers; providers get a console that speaks in timelocks, exposure and
+basis points.
+
+**Status:** feature-complete against a **mock settlement adapter**. The engine, router,
+ledger, state machines and all four surfaces are real and tested; no Bitcoin moves and
+there is no live Tachi integration yet — see [INTEGRATION.md](INTEGRATION.md) for the
+method-by-method plan and the open questions.
+
+## What the bounty asked for, and where it lives
+
+| Requirement | Where | Notes |
+|---|---|---|
+| On-chain → off-chain flow | `/` → `/swap/:id` | User pays a Bitcoin address; the LP fronts off-chain sats. Leg walks `pending → seen → confirmed → settled`; e2e-tested both directions. |
+| Off-chain → on-chain flow | same surfaces, `swap_out` | Mirror image: user pays off-chain, LP broadcasts on-chain. Leg walks `pending → committed → broadcasting → settled`. |
+| Clear fee / timing / liquidity display | quote panel + `/market` | Fee always shown **both ways** ("1 330 sats · 0.44%"), arrival stated as "seconds after 3 confirmations" from one shared constant, and live availability with per-provider min–max and est. time. Below-min and ceiling states name the real numbers in amber, never red. |
+| Timelock-abstraction UX | the vocabulary split | User surfaces are **jargon-banned** — "timelock", "vault" and "VTXO" cannot appear, and render tests fail the build if they do. The LP console **requires** the same words, because professionals pricing exposure are owed precision. Same swap, two honest vocabularies: to a user it is `CONFIRMING (2/3)`; to its provider it is locked capital with a settlement state. |
+| LP marketplace with routing logic | `/market`, `/lp`, `domain/router.ts` | Public book with a server-computed best-rate marker; deterministic split allocator (cheapest effective rate first, one-step rebalance, ≤3 legs) with its own unit-test suite; per-LP console with strict cross-LP isolation, asserted on every endpoint. |
 
 ## Quickstart
 
 ```sh
 npm install
-npm test                # 149 tests: router, state machines, adapter, auth, LP isolation, e2e, SSE, UI
+npm test                # 170 tests: router, state machines, adapter, auth, LP isolation, e2e, SSE, UI
 npm run typecheck
 npm run build           # builds apps/web into apps/web/dist (gateway serves it)
 
 cp .env.example .env    # set OPENSLUICE_OPERATOR_KEY + OPENSLUICE_WEBHOOK_SECRET
-                        # set OPENSLUICE_DEV_PUBLIC_SIMULATE=true for demo buttons
-npm run dev             # gateway on :8080 — serves the app at / and /swap/:id
-npm run seed:demo       # 3 demo LPs with distinct fees/capacities (reusable every gate)
+                        # set OPENSLUICE_DEV_PUBLIC_SIMULATE=true for the demo pay buttons
+npm run dev             # gateway on :8080 — serves /, /swap/:id, /lp and /market
+npm run seed:demo       # 3 demo LPs (Penstock, Headwater, Weir Labs) with distinct profiles
 ```
 
 Frontend dev loop: `npm run dev:web` starts Vite with HMR on :5173, proxying
@@ -30,38 +47,52 @@ Frontend dev loop: `npm run dev:web` starts Vite with HMR on :5173, proxying
 to point elsewhere). Production is build-then-serve: the gateway serves
 `apps/web/dist` itself via @fastify/static — one process.
 
-## The user flow (Gate 2 screens)
+## The four surfaces
 
-**Swap widget — `/`.** Two plain-language direction cards ("On-chain → Instant
-balance" / "Balance → On-chain"), an oversized sat amount input with thin-space
-grouping, live BTC line and MAX (= the book's current `maxRoutableSats` from
-`GET /api/limits`). ~400ms after typing stops, the live quote panel shows: the
-receive hero, total fee in sats *and* effective percent ("1 330 sats · 0.44%"),
-an honest time estimate, and the route — one quiet row for a single provider, or
-stacked per-LP rows under "Routed across N providers for the best rate" when the
-router split. A 60s countdown bar auto-refreshes the rate on expiry. Below min /
-above routable amounts get inline errors naming the real numbers ("up to
-140 000 sats available right now"). "Get this rate" accepts the quote (409s
-requote automatically with a "Rates updated" note) and lands on the progress
-page. A compact liquidity-book strip closes the page.
+**Swap widget — `/`.** Two direction cards using nav-pill logic (the selected one
+fills orange), an oversized sat input with thin-space grouping, a live BTC line and
+MAX (= the book's current `maxRoutableSats`). ~400 ms after typing stops the quote
+panel shows the **receive** hero — what lands, not what leaves — the fee both ways
+("1 330 sats · 0.44%"), the arrival promise ("seconds after 3 confirmations"), and the
+route. A split is sold as the feature: an accent "Routed across 3 providers" caption, a
+proportional bar in dimmed steps of the one privileged hue, and a quiet row per leg. A
+3 px countdown bar labelled "Rate held for you" auto-refreshes on expiry, and the fresh
+quote states the delta honestly before asking for the click ("You'd now receive 40 sats
+less"). Limits are amber, never red — nothing failed — and the liquidity ceiling offers
+the routable number as one tap ("Swap 390 000 instead").
 
 **Swap progress — `/swap/:id`.** SSE-driven (snapshot on connect, event on every
-swap/leg change, 15s heartbeats, 5s polling fallback). While awaiting payment:
-one instruction card per leg — amount, QR, address well with COPY, a status chip
-that walks `waiting → seen → confirming (2/3) → settled` in plain words, and a
-dashed DEV simulate button when `OPENSLUICE_DEV_PUBLIC_SIMULATE=true`. The
-funding countdown (15 min) shifts amber near the end. Terminal states: the big
-green **Swapped** money shot with per-leg settlement refs and the fee line;
-calm, honest expired / partly-received / failed cards. The swap id is the only
-capability needed — the public serializer never exposes LP identity, quote ids,
-webhook URLs, or raw engine errors (allowlist-tested).
+swap/leg change, 15 s heartbeats, 5 s polling fallback). A single-leg swap gets the
+"SEND EXACTLY" hero, QR and address well with COPY. A split gets "PART n OF N" cards
+with the "order doesn't matter" line, exactly one card live at a time (orange border, QR
+expanded) while funded parts collapse to receipt rows, and an "X of N parts funded"
+aggregate. Chips walk `WAITING → PAYMENT SEEN → CONFIRMING (n/3) → SETTLED`; the 15-minute
+funding countdown runs quiet gray, amber under 5:00, red pulse under 1:00, never moving
+position. Terminal states: the 88 px green **Swapped** money shot with per-leg refs, and
+calm expired / partially-funded / failed cards that answer "where is my money" in the
+first sentence. The swap id is the only capability — the public serializer never exposes
+LP identity, quote ids, webhook URLs or raw engine errors (allowlist-tested).
+
+**Provider console — `/lp`.** Key-gated (see [the LP guide](#the-lp-guide)). Overview
+leads with the earned-orange fees card — dark at zero, solid orange the moment it is
+positive — beside both ledger balances, with utilization bars per direction that go amber
+near cap as a prompt to add liquidity rather than an error. Liquidity is edited inline
+with a live "position in the book" preview. Exposure and History are white sheets. All
+views poll every 5 s, pause on a hidden tab, and carry the mock-settlement footer.
+
+**Marketplace — `/market`, public.** The liquidity book as an artifact: direction tabs,
+a totals header (total available, best rate, providers quoting), and provider rows on the
+white sheet sharing the widget's route-row anatomy. Best rate gets the only orange in the
+sheet — a filled chip plus a row wash — computed server-side with the router's own
+preference order, so the highlighted provider is the one quotes actually drain first. The
+empty book recruits.
 
 Words like "timelock", "vault", and "VTXO" never appear on user surfaces —
 render tests enforce it. The LP dashboard deliberately inverts this: LPs are
 professionals pricing timelock exposure, so there the precise words are
 required, and a render test asserts the vault language IS present.
 
-## The LP guide (Gate 3)
+## The LP guide
 
 ### Registering — operator curl, on purpose
 
@@ -72,7 +103,7 @@ and can never be shown again.
 ```sh
 curl -s -X POST :8080/api/lps \
   -H "Authorization: Bearer $OPENSLUICE_OPERATOR_KEY" -H 'Content-Type: application/json' \
-  -d '{"name":"Fjord Liquidity"}'
+  -d '{"name":"Penstock"}'
 # -> { "id": "lp_…", "apiKey": "slk_…", … }   <- hand the slk_ key to the LP, once
 ```
 
@@ -210,6 +241,70 @@ in ~1s), the LP pays on-chain, and the leg settles after 3 mock confirmations.
 - `POST /api/swaps` (public) — accept a quote: re-validate, lock, return per-leg payment instructions; optional `webhookUrl` (HMAC-signed `X-OpenSluice-Signature`, retried with backoff)
 - `GET /api/swaps/:id` (public, id = capability), `GET /api/swaps` (operator)
 - `POST /dev/simulate-onchain-deposit`, `POST /dev/simulate-offchain-payment`, `POST /dev/advance-blocks` (operator, dev/mock only)
+
+## Run it with Docker
+
+```sh
+cp .env.example .env                              # operator key + webhook secret
+docker compose up --build                         # gateway on :8080, SQLite on a named volume
+```
+
+The demo compose adds the unauthenticated pay-leg buttons used in the walkthrough:
+
+```sh
+docker compose -f docker-compose.demo.yml up --build
+# then seed the book against the running container:
+OPENSLUICE_OPERATOR_KEY=demo_operator_key OPENSLUICE_GATEWAY_URL=http://localhost:8080 npm run seed:demo
+```
+
+It sets `NODE_ENV=development` on purpose — the image bakes in
+`NODE_ENV=production`, and `loadConfig` gates *both* the dev routes and the public
+simulate route on `NODE_ENV !== "production"`. Without the override the container boots
+fine and the demo buttons silently do nothing.
+
+## Deploy to Fly.io
+
+```sh
+fly launch --no-deploy                # or: fly apps create <your-app>; edit app = in fly.toml
+fly volumes create opensluice_data --size 1 --region jnb
+fly secrets set OPENSLUICE_OPERATOR_KEY=... OPENSLUICE_WEBHOOK_SECRET=...
+fly deploy
+fly open                              # / , /market , /lp
+```
+
+One always-on 512 MB machine with the SQLite file on the mounted volume at `/data`.
+The two secrets are set with `fly secrets`, never in `fly.toml`.
+
+## Screenshots
+
+See [docs/screenshots/](docs/screenshots/) for the slots and what each must show.
+
+## Limitations, stated plainly
+
+- **Settlement is mocked.** `ADAPTER_MODE=tachi` exists as a documented scaffold that
+  refuses to boot. No real Bitcoin moves. The blocker is receiver-side VTXO detection —
+  [INTEGRATION.md](INTEGRATION.md) has the method-by-method plan, what Tachi answers
+  today, and what each open question unblocks.
+- **No LP fee payout.** Providers can see every sat they have earned, down to the leg,
+  but there is no withdrawal path — fees accumulate as ledger balance and stay there.
+- **Single node, single operator, SQLite.** The coordinator is fully trusted: it books
+  both sides of every ledger entry with no external attestation, and quote-lock
+  re-validation relies on one process serializing on one database.
+
+[GAPS.md](GAPS.md) is the complete, honest list.
+
+## Sibling project
+
+OpenSluice is built on the patterns of [OpenTill](../opentill), a self-hosted Bitcoin
+point-of-sale on the same stack: the same hand-written SQL migrations, transition-map
+state machines, cursor poller, HMAC webhooks, settlement-adapter seam and v2 design
+token sheet. The two marks are a family: OpenTill is value dropping into an open till,
+OpenSluice is the gate raised so value can move between levels — same 1.5-unit open gap,
+orange always on the element in motion. See [docs/brand/](docs/brand/).
+
+## License
+
+MIT — see [LICENSE](LICENSE).
 
 ## Design notes
 

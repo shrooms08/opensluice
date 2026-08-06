@@ -1,4 +1,4 @@
-/* Swap progress — checkout DNA: black card on black page, SSE-driven. */
+/* Swap progress — surface 2. OpenTill checkout DNA, mobile-first, 390px card. */
 
 .pg-page {
   min-height: 100dvh;
@@ -12,15 +12,25 @@
 
 .pg-card {
   width: 100%;
-  max-width: 440px;
+  max-width: 390px;
   box-sizing: border-box;
   background: var(--ot-bg);
   border: 1px solid var(--ot-hairline);
-  border-radius: var(--ot-r-lg);
+  border-radius: var(--ot-r-xl);
   box-shadow: var(--ot-card-shadow);
-  padding: 24px 22px 20px;
+  padding: 22px 20px 20px;
   animation: ot-fade 0.15s ease-out;
   overflow: hidden;
+}
+
+.pg-card.is-centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 420px;
+  text-align: center;
 }
 
 .pg-card.is-settled {
@@ -28,9 +38,14 @@
   box-shadow: var(--ot-confirm-glow);
 }
 
-.pg-card.is-quiet {
-  border-color: var(--ot-hairline-2);
-  box-shadow: none;
+.pg-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  font: 500 10.5px var(--ot-font-mono);
+  letter-spacing: 1.5px;
+  color: var(--ot-text-3);
 }
 
 /* ---- header ------------------------------------------------------------------ */
@@ -38,63 +53,63 @@
 .pg-head {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
 }
 
-.pg-receive-label {
-  font: 500 11px var(--ot-font-mono);
-  letter-spacing: 1px;
-  text-transform: uppercase;
+.pg-id {
+  font-size: 11px;
+  color: var(--ot-text-4);
+}
+
+/* ---- single-leg "send exactly" ------------------------------------------------- */
+
+.pg-send-exactly {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.pg-send-label {
+  font: 700 11px var(--ot-font-mono);
+  letter-spacing: 2px;
   color: var(--ot-text-3);
 }
 
-.pg-receive {
-  margin-top: 6px;
-  font: 700 34px/1 var(--ot-font-mono);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -1px;
-  color: var(--ot-text-hero);
-}
-
-.pg-receive .unit {
-  font: 700 14px var(--ot-font-display);
-  color: var(--ot-accent);
-}
-
-.pg-dest {
+.pg-send-amount {
   margin-top: 8px;
-  font: 400 11.5px var(--ot-font-mono);
-  color: var(--ot-text-3);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font: 700 40px/1 var(--ot-font-display);
+  letter-spacing: -1.5px;
+  color: var(--ot-text-hero);
+  font-variant-numeric: tabular-nums;
+}
+
+.pg-send-amount .unit {
+  font: 700 16px var(--ot-font-display);
+  color: var(--ot-accent);
+  letter-spacing: 0;
 }
 
 .pg-multi-note {
   margin-top: 16px;
-  font: 400 12.5px/1.5 var(--ot-font-display);
+  font: 400 13px/1.5 var(--ot-font-display);
   color: var(--ot-text-2);
 }
 
-.pg-count {
-  margin-top: 16px;
-}
-
-/* ---- leg cards ---------------------------------------------------------------- */
+/* ---- legs ----------------------------------------------------------------------- */
 
 .pg-legs {
-  margin-top: 18px;
+  margin-top: 14px;
   display: flex;
   flex-direction: column;
-  gap: var(--ot-s-3);
+  gap: 8px;
 }
 
-.leg-card {
-  border: 1px solid var(--ot-hairline);
-  border-radius: var(--ot-r-lg);
+/* The live part: orange border, QR expanded. Exactly one at a time. */
+.leg-card.is-live {
   background: var(--ot-chrome);
-  padding: 14px;
+  border: 1px solid var(--ot-accent);
+  border-radius: var(--ot-r-lg);
+  padding: 16px;
 }
 
 .leg-head {
@@ -104,198 +119,276 @@
   gap: 10px;
 }
 
-.leg-title {
-  font: 500 12.5px var(--ot-font-display);
-  color: var(--ot-text-2);
-}
-
-.leg-title .mono {
-  font-weight: 700;
-  font-size: 12.5px;
-  color: var(--ot-text);
-}
-
-.leg-qr {
-  margin-top: 14px;
-  display: flex;
-  justify-content: center;
-  max-width: 100%;
-  min-width: 0;
-}
-
-.leg-hint {
-  margin-top: 12px;
-  font: 400 12px/1.5 var(--ot-font-display);
-  color: var(--ot-text-2);
-}
-
-.leg-hint .strong {
-  font-weight: 700;
-  color: var(--ot-text);
-}
-
-.leg-addr {
-  margin-top: 8px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--ot-bg);
-  border: 1px solid var(--ot-hairline);
-  border-radius: var(--ot-r-md);
-  padding: 9px 10px;
-}
-
-.leg-addr-text {
-  flex: 1;
-  min-width: 0;
-  font-size: 11.5px;
-  color: var(--ot-text-2);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.leg-dev {
-  margin-top: 10px;
-}
-
-.leg-refs {
-  margin-top: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 11.5px;
+.leg-part {
+  font: 700 10px var(--ot-font-mono);
+  letter-spacing: 1.5px;
   color: var(--ot-text-3);
 }
 
-.leg-ref {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--ot-text-2);
+.leg-part.is-accent {
+  color: var(--ot-accent);
 }
 
-/* ---- terminal typographic moments ---------------------------------------------- */
-
-.pg-done-label {
-  font: 500 10.5px var(--ot-font-mono);
-  letter-spacing: 1px;
-  color: var(--ot-green-dark-surface);
-  text-transform: uppercase;
-}
-
-.pg-settle {
-  margin-top: 26px;
-  animation: ot-settle 0.22s cubic-bezier(0.2, 0.8, 0.3, 1) both;
-}
-
-.pg-mega {
-  font: 700 88px/0.9 var(--ot-font-display);
-  letter-spacing: -4px;
-  color: var(--ot-green-dark-surface);
-}
-
-.pg-settle-amt {
-  margin-top: 18px;
-  font: 700 34px/1 var(--ot-font-mono);
-  font-variant-numeric: tabular-nums;
+.leg-amount {
+  margin-top: 10px;
+  font: 700 26px/1 var(--ot-font-display);
   letter-spacing: -1px;
   color: var(--ot-text-hero);
+  font-variant-numeric: tabular-nums;
 }
 
-.pg-settle-amt .unit {
-  font: 700 15px var(--ot-font-display);
-  color: var(--ot-green-dark-surface);
+.leg-amount .unit {
+  font: 700 13px var(--ot-font-display);
+  color: var(--ot-accent);
+  letter-spacing: 0;
 }
 
-.pg-settle-btc {
-  margin-top: 8px;
-  font: 400 12px var(--ot-font-mono);
-  color: var(--ot-text-3);
-}
-
-.pg-expired-hero {
-  margin-top: 26px;
-  font: 700 72px/0.9 var(--ot-font-display);
-  letter-spacing: -3px;
-  color: var(--ot-expired-ink);
-}
-
-.pg-struck {
-  margin-top: 16px;
-  font: 500 18px/1 var(--ot-font-mono);
-  color: var(--ot-text-3);
-  text-decoration: line-through;
-  text-decoration-thickness: 2px;
-}
-
-.pg-partial-hero {
-  margin-top: 26px;
-  font: 700 44px/1 var(--ot-font-display);
-  letter-spacing: -1.5px;
-  color: var(--ot-amber);
-}
-
-.pg-partial-well {
-  margin-top: 18px;
-}
-
-.pg-failed-hero {
-  margin-top: 26px;
-  font: 700 44px/1 var(--ot-font-display);
-  letter-spacing: -1.5px;
-  color: var(--ot-red);
-}
-
-.pg-failed-well {
-  margin-top: 18px;
-}
-
-.pg-note-text {
-  margin-top: 20px;
-  font: 400 13px/1.55 var(--ot-font-display);
-  color: var(--ot-text-2);
-}
-
-/* ---- receipt rows + footer ------------------------------------------------------ */
-
-.pg-rows {
-  margin-top: 24px;
-  border-top: 1px solid var(--ot-hairline-2);
-  padding-top: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  font: 400 11.5px var(--ot-font-mono);
-  color: var(--ot-text-3);
-}
-
-.pg-rows .row {
+/* Funded / queued parts collapse to a receipt row. */
+.leg-row {
+  background: var(--ot-chrome);
+  border: 1px solid var(--ot-hairline);
+  border-radius: var(--ot-r-lg);
+  padding: 14px 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
 }
 
-.pg-rows .value {
-  color: var(--ot-text-2);
+.leg-row-amt {
+  margin-top: 4px;
+  font: 700 16px var(--ot-font-display);
+  letter-spacing: -0.5px;
+  color: var(--ot-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.leg-row-amt .unit {
+  font: 700 11px var(--ot-font-display);
+  color: var(--ot-text-3);
+}
+
+.pill-next {
+  border-radius: var(--ot-r-pill);
+  padding: 4px 11px;
+  font: 700 9px var(--ot-font-mono);
+  letter-spacing: 0.5px;
+  background: var(--ot-chrome-2);
+  color: var(--ot-text-3);
+  white-space: nowrap;
+}
+
+.leg-addr {
+  margin-top: 12px;
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--ot-border-int);
+  border-radius: var(--ot-r-md);
+  overflow: hidden;
+}
+
+.leg-addr-text {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 10px;
+  font-size: 11px;
+  color: var(--ot-text);
+  background: var(--ot-bg);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.leg-qr {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+}
+
+.leg-hint {
+  margin-top: 12px;
+  font: 400 12px/1.5 var(--ot-font-display);
+  color: var(--ot-text-3);
+  text-align: center;
+}
+
+.leg-dev {
+  margin-top: 12px;
+  width: 100%;
+  justify-content: center;
+}
+
+/* ---- funding progress + countdown ------------------------------------------------ */
+
+.pg-progress-row {
+  margin-top: 14px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--ot-text-3);
+}
+
+.pg-count {
+  margin-top: 8px;
+}
+
+/* ---- settling -------------------------------------------------------------------- */
+
+.pg-settling-title {
+  font: 700 18px var(--ot-font-display);
+  color: var(--ot-text);
+}
+
+/* ---- the money shot ---------------------------------------------------------------- */
+
+.pg-money-shot {
+  width: 100%;
+  animation: ot-settle 0.22s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+.pg-mega {
+  font: 700 88px/0.95 var(--ot-font-display);
+  letter-spacing: -4px;
+  color: var(--ot-green-dark-surface);
+}
+
+.pg-settle-amt {
+  margin-top: 18px;
+  font: 700 34px/1 var(--ot-font-display);
+  letter-spacing: -1px;
+  color: var(--ot-text-hero);
+  font-variant-numeric: tabular-nums;
+}
+
+.pg-settle-amt .unit {
+  font: 700 16px var(--ot-font-display);
+  color: var(--ot-text-3);
+  letter-spacing: 0;
+}
+
+.pg-settle-fee {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--ot-text-3);
+}
+
+.pg-dest {
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: var(--ot-text-4);
+  overflow-wrap: anywhere;
+}
+
+.pg-receipt {
+  margin-top: 22px;
+  border-top: 1px solid var(--ot-hairline-2);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.pg-receipt-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--ot-text-4);
+}
+
 .pg-ref {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  color: var(--ot-text-3);
 }
 
 .pg-again {
+  margin-top: 24px;
+  display: inline-block;
+  text-decoration: none;
+}
+
+/* ---- terminal states ----------------------------------------------------------------- */
+
+.pg-ghost-hero {
+  font: 700 34px/1 var(--ot-font-display);
+  letter-spacing: -1px;
+  color: var(--ot-border-int);
+}
+
+.pg-ghost-hero.is-quiet {
+  color: var(--ot-text-3);
+}
+
+.pg-terminal-chip {
   display: inline-block;
   margin-top: 18px;
-  text-decoration: none;
-  text-align: center;
+  border-radius: var(--ot-r-pill);
+  padding: 5px 13px;
+  font: 700 10px var(--ot-font-mono);
+  letter-spacing: 0.5px;
 }
+
+.pg-terminal-chip.is-amber {
+  background: var(--ot-tint-pending-bg);
+  color: var(--ot-amber);
+}
+
+.pg-terminal-chip.is-red {
+  background: var(--ot-tint-refundpending-bg);
+  color: var(--ot-red);
+}
+
+.pg-terminal-title {
+  margin-top: 14px;
+  font: 700 22px var(--ot-font-display);
+  letter-spacing: -0.5px;
+  color: var(--ot-text);
+}
+
+.pg-note-text {
+  margin-top: 10px;
+  font: 400 13px/1.55 var(--ot-font-display);
+  color: var(--ot-text-2);
+}
+
+.pg-struck {
+  font-size: 13px;
+  color: var(--ot-text-4);
+  text-decoration: line-through;
+}
+
+.pg-rows {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.pg-rows .row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font: 400 11.5px var(--ot-font-mono);
+  color: var(--ot-text-3);
+}
+
+.pg-rows .value {
+  color: var(--ot-text);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.pg-rows .value.is-green {
+  color: var(--ot-green-dark-surface);
+}
+
+.pg-rows .value.is-amber {
+  color: var(--ot-amber);
+}
+
+/* ---- foot ------------------------------------------------------------------------------ */
 
 .pg-foot {
   margin-top: 18px;
@@ -303,50 +396,30 @@
   padding-top: 12px;
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  gap: 12px;
   font-size: 11px;
   color: var(--ot-text-4);
 }
 
-/* ---- empty states ---------------------------------------------------------------- */
-
-.pg-empty {
-  text-align: center;
-  padding: var(--ot-s-7) 0;
-}
-
-.pg-empty-mark {
-  font: 700 13px var(--ot-font-mono);
-  letter-spacing: 4px;
+.pg-foot a {
   color: var(--ot-text-4);
-  text-transform: uppercase;
+  text-decoration: none;
 }
 
-.pg-empty-title {
-  margin: 26px 0 10px;
-  font: 700 30px var(--ot-font-display);
-  letter-spacing: -1px;
-  color: var(--ot-text);
-}
-
-.pg-empty-sub {
-  font: 400 13px/1.6 var(--ot-font-display);
-  color: var(--ot-text-2);
-}
-
-.pg-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  padding: var(--ot-s-7) 0;
+.pg-foot a:hover {
   color: var(--ot-text-3);
-  font: 500 12.5px var(--ot-font-mono);
-  letter-spacing: 1px;
+}
+
+@media (max-width: 420px) {
+  .pg-mega {
+    font-size: 68px;
+    letter-spacing: -3px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pg-card,
-  .pg-settle {
+  .pg-money-shot {
     animation: none;
   }
 }

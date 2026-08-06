@@ -1,59 +1,115 @@
-/* Public marketplace — the liquidity book on the black canvas. Variables only. */
+/* Public marketplace — surface 4. The liquidity book as a public artifact. */
 
 .mk {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: var(--ot-s-5) var(--ot-s-4);
 }
 
 .mk-head {
-  width: 100%;
-  max-width: 720px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 18px 28px;
+  border-bottom: 1px solid var(--ot-hairline-2);
 }
 
-.mk-swap-link {
+.mk-brand {
   text-decoration: none;
-  padding: 8px 14px;
-  font-size: 12px;
+  /* Clear space = 0.5 × mark height, per the lockup rules. */
+  padding: 12px 0;
+}
+
+.mk-nav {
+  display: flex;
+  gap: 20px;
+  font: 500 13px var(--ot-font-display);
+  color: var(--ot-text-2);
+}
+
+.mk-nav a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.mk-nav a:hover {
+  color: var(--ot-text);
+}
+
+.mk-nav .is-current {
+  color: var(--ot-text);
 }
 
 .mk-main {
   width: 100%;
-  max-width: 720px;
-  margin-top: var(--ot-s-6);
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 30px 32px 36px;
   display: flex;
   flex-direction: column;
-  gap: var(--ot-s-4);
+  gap: 20px;
 }
 
 .mk-title-row {
   display: flex;
-  align-items: center;
-  gap: 14px;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+  flex-wrap: wrap;
 }
 
 .mk-title {
   margin: 0;
-  font: 700 30px/1.1 var(--ot-font-display);
+  font: 700 26px var(--ot-font-display);
   letter-spacing: -1px;
-  color: var(--ot-text-hero);
+  color: var(--ot-text);
 }
 
-.mk-sub {
-  margin: 0;
-  font: 400 13px/1.55 var(--ot-font-display);
+.mk-live {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
   color: var(--ot-text-3);
-  max-width: 520px;
 }
+
+.mk-live .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ot-green-dark-surface);
+  animation: ot-pulse 1.4s ease-in-out infinite;
+}
+
+/* ---- direction tabs (nav-pill logic, same as the widget's cards) ------------- */
 
 .mk-tabs {
   display: flex;
   gap: 8px;
+}
+
+.mk-tab {
+  padding: 8px 16px;
+  border-radius: var(--ot-r-pill);
+  border: 1px solid var(--ot-border-int);
+  background: transparent;
+  font: 500 12px var(--ot-font-display);
+  color: var(--ot-text-2);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mk-tab:hover:not(.is-active) {
+  border-color: var(--ot-text-3);
+  color: var(--ot-text);
+}
+
+.mk-tab.is-active {
+  background: var(--ot-accent);
+  border-color: var(--ot-accent);
+  font-weight: 700;
+  color: var(--ot-ink);
 }
 
 /* ---- totals header -------------------------------------------------------- */
@@ -61,129 +117,183 @@
 .mk-totals {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  gap: 14px;
 }
 
 .mk-total {
   background: var(--ot-chrome);
   border: 1px solid var(--ot-hairline);
   border-radius: var(--ot-r-lg);
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  padding: 18px 20px;
 }
 
 .mk-total-label {
-  font: 500 10px var(--ot-font-mono);
+  display: block;
+  font: 500 10.5px var(--ot-font-mono);
   letter-spacing: 1.5px;
-  color: var(--ot-text-4);
+  color: var(--ot-text-3);
   text-transform: uppercase;
 }
 
 .mk-total-value {
-  font: 700 16px var(--ot-font-mono);
-  font-variant-numeric: tabular-nums;
+  display: block;
+  margin-top: 10px;
+  font: 700 26px var(--ot-font-display);
+  letter-spacing: -1px;
   color: var(--ot-text);
+  font-variant-numeric: tabular-nums;
 }
 
-/* ---- provider rows ---------------------------------------------------------- */
+.mk-total-value.is-accent {
+  color: var(--ot-accent);
+}
 
-.mk-book {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.mk-total-value .unit {
+  font: 700 13px var(--ot-font-display);
+  color: var(--ot-text-3);
+  letter-spacing: 0;
+}
+
+/* ---- the white sheet: provider rows share the widget's route-row anatomy ----- */
+
+.mk-sheet {
+  background: var(--ot-sheet);
+  border-radius: 14px;
+  padding: 8px 24px 16px;
+  color: var(--ot-ink);
+  overflow-x: auto;
 }
 
 .mk-row {
-  background: var(--ot-chrome);
-  border: 1px solid var(--ot-hairline);
-  border-radius: var(--ot-r-lg);
-  padding: 15px 17px;
+  display: grid;
+  grid-template-columns: 1.3fr 140px 150px 190px 120px;
+  gap: 12px;
+  align-items: center;
+  padding: 13px 4px;
+  border-bottom: 1px solid var(--ot-sheet-rule);
+  font: 400 12.5px var(--ot-font-mono);
+  color: var(--ot-ink);
+  min-width: 720px;
 }
 
+.mk-row .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.mk-row-head {
+  padding: 12px 4px;
+  border-bottom: 1.5px solid var(--ot-sheet-rule-heavy);
+  font: 700 10px var(--ot-font-mono);
+  letter-spacing: 1.5px;
+  color: var(--ot-ink-3);
+  white-space: nowrap;
+}
+
+/* Best rate gets the only orange in the sheet: filled chip + row wash. */
 .mk-row.is-best {
-  border-color: var(--ot-accent);
-  box-shadow: var(--ot-focus-ring);
+  background: var(--ot-sheet-best-row);
 }
 
-.mk-row-name {
+.mk-row:not(.mk-row-head):hover {
+  background: var(--ot-sheet-hover);
+}
+
+.mk-row.is-best:hover {
+  background: var(--ot-sheet-best-row);
+}
+
+.mk-provider {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
+}
+
+.mk-name {
   font: 700 14px var(--ot-font-display);
-  color: var(--ot-text);
+  color: var(--ot-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mk-best-tag {
-  background: var(--ot-accent);
-  color: var(--ot-ink);
-  border-radius: 4px;
-  padding: 2px 7px;
+  border-radius: var(--ot-r-pill);
+  padding: 3px 10px;
   font: 700 9px var(--ot-font-mono);
   letter-spacing: 1px;
+  background: var(--ot-accent);
+  color: var(--ot-ink);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.mk-row-facts {
-  margin-top: 10px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 22px;
+.mk-avail {
+  font-weight: 500;
 }
 
-.mk-fact {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+.mk-rate {
+  font-weight: 700;
 }
 
-.mk-fact-label {
-  font: 500 9.5px var(--ot-font-mono);
-  letter-spacing: 1.2px;
-  color: var(--ot-text-4);
-  text-transform: uppercase;
+.mk-dim {
+  color: var(--ot-ink-3);
 }
 
-.mk-fact .mono {
-  font-size: 12px;
-  color: var(--ot-text-2);
+.mk-blended {
+  margin: 0;
+  padding: 14px 4px 4px;
+  font: 400 12px var(--ot-font-mono);
+  color: var(--ot-ink-3);
 }
 
-.mk-row.is-best .mk-fact .mono {
-  color: var(--ot-text);
-}
+/* ---- empty book: the void recruits ------------------------------------------- */
 
-/* ---- empty + footer ----------------------------------------------------------- */
-
-.mk-empty {
+.mk-sheet.is-empty {
+  padding: 60px 32px;
   text-align: center;
-  padding: 56px 24px;
-  border: 1px dashed var(--ot-hairline);
-  border-radius: var(--ot-r-lg);
+  overflow-x: visible;
 }
 
 .mk-empty-title {
-  font: 700 26px var(--ot-font-display);
-  letter-spacing: -1px;
-  color: var(--ot-text-4);
+  font: 700 40px/1 var(--ot-font-display);
+  letter-spacing: -1.5px;
+  color: var(--ot-sheet-empty);
 }
 
 .mk-empty-sub {
   margin: 10px auto 0;
-  max-width: 380px;
-  font: 400 13px/1.55 var(--ot-font-display);
-  color: var(--ot-text-3);
+  max-width: 420px;
+  font: 400 14px/1.5 var(--ot-font-display);
+  color: var(--ot-ink-3);
+}
+
+.mk-become {
+  display: inline-block;
+  margin-top: 20px;
+  text-decoration: none;
 }
 
 .mk-foot {
   margin-top: auto;
-  padding-top: var(--ot-s-6);
+  padding: var(--ot-s-6) 32px;
   font-size: 11px;
   color: var(--ot-text-4);
 }
 
-@media (max-width: 560px) {
+@media (max-width: 720px) {
+  .mk-main {
+    padding: 20px 14px 32px;
+  }
+
   .mk-totals {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mk-live .dot {
+    animation: none;
   }
 }

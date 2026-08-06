@@ -1,44 +1,65 @@
-/* Swap widget — the hero surface. Black page, hairline-separated sections. */
+/* Swap widget — surface 1. Black page, the widget column holds at 380px. */
 
 .wp {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: var(--ot-s-5) var(--ot-s-4);
   overflow-x: hidden;
 }
 
 .wp-head {
   width: 100%;
-  max-width: 480px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 18px 28px;
+  border-bottom: 1px solid var(--ot-hairline-2);
+}
+
+.wp-brand {
+  text-decoration: none;
+  /* Clear space = 0.5 × mark height, per the lockup rules. */
+  padding: 12px 0;
+}
+
+.wp-nav {
+  display: flex;
+  gap: 20px;
+  font: 500 13px var(--ot-font-display);
+  color: var(--ot-text-2);
+}
+
+.wp-nav a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.wp-nav a:hover {
+  color: var(--ot-text);
+}
+
+.wp-nav .is-current {
+  color: var(--ot-text);
 }
 
 .wp-main {
   width: 100%;
-  max-width: 480px;
-  margin-top: var(--ot-s-6);
+  max-width: 380px;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--ot-s-5);
+  justify-content: center;
+  gap: var(--ot-s-3);
+  padding: var(--ot-s-6) var(--ot-s-4);
 }
 
-.wp-title {
-  margin: 0;
-  font: 700 30px/1.1 var(--ot-font-display);
-  letter-spacing: -1px;
-  color: var(--ot-text-hero);
-}
-
-/* ---- direction cards (kind-selector pattern) -------------------------------- */
+/* ---- direction cards: nav-pill logic (selected = filled orange) ------------- */
 
 .wp-directions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--ot-s-3);
+  gap: 8px;
 }
 
 .dir-card {
@@ -46,34 +67,38 @@
   background: var(--ot-chrome);
   border: 1px solid var(--ot-hairline);
   border-radius: var(--ot-r-lg);
-  padding: 16px 15px;
+  padding: 16px 14px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.dir-card:hover {
-  border-color: var(--ot-border-int);
+.dir-card:hover:not(.is-active) {
+  border-color: var(--ot-text-3);
 }
 
 .dir-card.is-active {
+  background: var(--ot-accent);
   border-color: var(--ot-accent);
-  box-shadow: var(--ot-focus-ring);
 }
 
 .dir-title {
-  font: 700 14px var(--ot-font-display);
-  color: var(--ot-text);
+  font: 700 14px/1.25 var(--ot-font-display);
+  color: var(--ot-text-2);
 }
 
 .dir-card.is-active .dir-title {
-  color: var(--ot-text-hero);
+  color: var(--ot-ink);
 }
 
 .dir-sub {
-  font: 400 12px/1.45 var(--ot-font-display);
-  color: var(--ot-text-3);
+  font-size: 11px;
+  color: var(--ot-text-4);
+}
+
+.dir-card.is-active .dir-sub {
+  color: var(--ot-accent-dim-65);
 }
 
 @media (max-width: 430px) {
@@ -84,29 +109,63 @@
 
 /* ---- amount ------------------------------------------------------------------ */
 
+.wp-amount {
+  background: var(--ot-chrome);
+  border: 1px solid var(--ot-hairline);
+  border-radius: var(--ot-r-lg);
+  padding: 18px 18px 14px;
+}
+
 .wp-amount-head {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: baseline;
 }
 
 .wp-amount-head label {
-  font: 500 12px var(--ot-font-display);
-  color: var(--ot-text-2);
+  font: 700 10px var(--ot-font-mono);
+  letter-spacing: 1.5px;
+  color: var(--ot-text-3);
+}
+
+.wp-max {
+  background: none;
+  border: none;
+  padding: 0;
+  font: 700 10px var(--ot-font-mono);
+  letter-spacing: 1px;
+  color: var(--ot-accent);
+  cursor: pointer;
+}
+
+.wp-max:hover {
+  color: var(--ot-accent-hover);
+}
+
+.wp-amount-field {
+  margin-top: 8px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  border-bottom: 2px solid var(--ot-border-int);
+  padding-bottom: 8px;
+}
+
+/* A limit is amber, never red — nothing failed. */
+.wp-amount-field.is-limited {
+  border-bottom-color: var(--ot-amber-underline);
 }
 
 .wp-amount-input {
-  margin-top: 10px;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   background: transparent;
   border: none;
-  border-bottom: 1px solid var(--ot-border-int);
-  border-radius: 0;
-  padding: 4px 0 10px;
-  font: 700 44px/1 var(--ot-font-mono);
+  padding: 0;
+  font: 500 40px/1 var(--ot-font-mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: -1px;
-  color: var(--ot-text-hero);
+  color: var(--ot-text);
   outline: none;
   caret-color: var(--ot-accent);
 }
@@ -115,24 +174,24 @@
   color: var(--ot-text-4);
 }
 
-.wp-amount-input:focus {
-  border-bottom-color: var(--ot-accent);
+.wp-amount-unit {
+  font: 700 16px var(--ot-font-display);
+  color: var(--ot-accent);
 }
 
 .wp-amount-btc {
   margin-top: 8px;
-  min-height: 15px;
-  font: 400 12px var(--ot-font-mono);
-  color: var(--ot-text-3);
+  font-size: 11.5px;
+  color: var(--ot-text-4);
 }
 
 /* ---- quote panel -------------------------------------------------------------- */
 
 .qp {
-  border: 1px solid var(--ot-hairline);
-  border-radius: var(--ot-r-lg);
   background: var(--ot-chrome);
-  padding: 18px;
+  border: 1px solid var(--ot-hairline);
+  border-radius: 14px;
+  padding: 20px 18px 18px;
   animation: ot-fade 0.15s ease-out;
 }
 
@@ -141,119 +200,156 @@
   align-items: center;
   gap: 12px;
   min-height: 64px;
+  padding: 18px;
   font: 400 13px var(--ot-font-display);
   color: var(--ot-text-3);
 }
 
-.qp-error {
-  border-color: var(--ot-amber-well-border);
-  background: var(--ot-amber-well);
-  font: 400 13px/1.5 var(--ot-font-display);
-  color: var(--ot-amber-well-text);
+/* Limit states: amber copy on the calm card, plus the one-tap fallback. */
+.qp-limit {
+  padding: 16px 18px;
+  font: 400 12.5px/1.5 var(--ot-font-display);
+  color: var(--ot-amber);
 }
 
-.qp-error .strong {
+.qp-limit .strong {
   font-weight: 700;
-  color: var(--ot-amber);
+}
+
+.qp-fallback {
+  margin-top: 14px;
+  width: 100%;
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 14px;
 }
 
 .qp-note {
   margin-bottom: 12px;
-  font: 500 11px var(--ot-font-mono);
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
+  background: var(--ot-tint-pending-bg);
+  border: 1px solid var(--ot-amber-well-border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font: 400 12px/1.45 var(--ot-font-display);
   color: var(--ot-amber);
 }
 
 .qp-receive-label {
-  font: 500 11px var(--ot-font-mono);
-  letter-spacing: 1px;
-  text-transform: uppercase;
+  font: 700 10px var(--ot-font-mono);
+  letter-spacing: 1.5px;
   color: var(--ot-text-3);
 }
 
 .qp-hero {
   margin-top: 8px;
-  font: 700 40px/1 var(--ot-font-mono);
+  font: 700 42px/1 var(--ot-font-display);
+  letter-spacing: -1.5px;
+  color: var(--ot-text);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -1px;
-  color: var(--ot-text-hero);
 }
 
 .qp-hero-unit {
-  margin-top: 4px;
-  font: 700 13px var(--ot-font-display);
+  font: 700 17px var(--ot-font-display);
   color: var(--ot-accent);
+  letter-spacing: 0;
 }
 
 .qp-rows {
-  margin-top: 16px;
-  border-top: 1px solid var(--ot-hairline-2);
-  padding-top: 12px;
+  margin-top: 14px;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
 }
 
 .qp-row {
   display: flex;
   justify-content: space-between;
-  font: 400 12.5px var(--ot-font-display);
-  color: var(--ot-text-2);
+  gap: 12px;
+  font: 400 12px var(--ot-font-mono);
+  color: var(--ot-text-3);
 }
 
 .qp-row .mono {
-  font-size: 12px;
   color: var(--ot-text);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 /* ---- route ------------------------------------------------------------------- */
 
 .qp-route {
   margin-top: 14px;
-  border-top: 1px solid var(--ot-hairline-2);
+  border-top: 1px solid var(--ot-hairline);
   padding-top: 12px;
 }
 
+.qp-route-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
 .qp-route-caption {
-  font: 500 11px var(--ot-font-mono);
-  letter-spacing: 0.5px;
+  font: 700 9.5px var(--ot-font-mono);
+  letter-spacing: 1.5px;
   text-transform: uppercase;
   color: var(--ot-accent);
-  margin-bottom: 8px;
+}
+
+.qp-route-caption.is-quiet {
+  color: var(--ot-text-4);
+}
+
+.qp-route-why {
+  font: 400 10px var(--ot-font-mono);
+  color: var(--ot-text-4);
+}
+
+/* Proportional split bar: one hue, stepped — not three competing colors. */
+.qp-split-bar {
+  margin-top: 10px;
+  display: flex;
+  gap: 2px;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.qp-split-seg {
+  height: 100%;
 }
 
 .qp-route-row {
+  margin-top: 8px;
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 10px;
-  padding: 5px 0;
-  font: 400 12.5px var(--ot-font-display);
-  color: var(--ot-text-2);
-}
-
-.qp-route-row .mono {
-  font-size: 12px;
-  color: var(--ot-text);
-}
-
-.qp-route-row.is-single {
-  color: var(--ot-text-3);
-}
-
-.qp-route-row.is-single .qp-route-fee {
-  color: var(--ot-text-2);
+  font: 400 12px var(--ot-font-mono);
 }
 
 .qp-route-lp {
-  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ot-text-2);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.qp-leg-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
 .qp-route-fee {
   color: var(--ot-text-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .qp-count {
@@ -262,72 +358,87 @@
 
 /* ---- destination + accept ------------------------------------------------------ */
 
+.wp-dest {
+  background: var(--ot-chrome);
+  border: 1px solid var(--ot-hairline);
+  border-radius: var(--ot-r-lg);
+  padding: 14px 18px;
+}
+
 .wp-dest label {
   display: block;
   margin-bottom: 8px;
-  font: 500 12px var(--ot-font-display);
-  color: var(--ot-text-2);
+  font: 700 10px var(--ot-font-mono);
+  letter-spacing: 1.5px;
+  color: var(--ot-text-3);
 }
 
 .wp-accept {
   width: 100%;
-  padding: 14px 18px;
+  border-radius: 10px;
+  padding: 15px;
   font-size: 14px;
 }
 
-/* ---- marketplace strip ---------------------------------------------------------- */
+/* ---- marketplace strip (the trust line) ------------------------------------------ */
 
 .strip {
-  margin-top: var(--ot-s-2);
-  border: 1px solid var(--ot-hairline-2);
-  border-radius: var(--ot-r-lg);
-  padding: 13px 15px;
-}
-
-.strip-head {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 8px;
-}
-
-.strip-caption {
-  font: 500 10px var(--ot-font-mono);
-  letter-spacing: 1.5px;
-  color: var(--ot-text-4);
-}
-
-.strip-link {
-  font-size: 10.5px;
-  color: var(--ot-text-3);
-  text-decoration: none;
-}
-
-.strip-link:hover {
-  color: var(--ot-accent);
-}
-
-.strip-row {
-  display: flex;
-  justify-content: space-between;
+  align-items: center;
   gap: 12px;
-  padding: 4px 0;
-  font: 400 12px var(--ot-font-display);
+  padding: 12px 14px;
+  background: var(--ot-bg);
+  border: 1px solid var(--ot-hairline-2);
+  border-radius: 10px;
+}
+
+.strip-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
   color: var(--ot-text-3);
+}
+
+.strip-live .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ot-green-dark-surface);
+  animation: ot-pulse 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.strip-live.is-empty .dot {
+  background: var(--ot-text-4);
+  animation: none;
 }
 
 .strip-facts {
-  font-size: 11.5px;
-  color: var(--ot-text-2);
+  font-size: 11px;
+  color: var(--ot-text-3);
+  white-space: nowrap;
 }
 
-.strip-facts.is-empty {
-  color: var(--ot-text-4);
+.strip-facts a {
+  color: var(--ot-text-2);
+  text-decoration: none;
+}
+
+.strip-facts a:hover {
+  color: var(--ot-accent);
 }
 
 .wp-foot {
-  margin-top: auto;
-  padding-top: var(--ot-s-6);
+  padding: var(--ot-s-6) var(--ot-s-4);
   font-size: 11px;
   color: var(--ot-text-4);
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .strip-live .dot {
+    animation: none;
+  }
 }

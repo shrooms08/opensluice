@@ -22,14 +22,8 @@
 
 .wordmark {
   padding: 0 24px;
-  font: 700 20px var(--ot-font-display);
-  letter-spacing: -0.5px;
-  color: var(--ot-text-hero);
   text-decoration: none;
-}
-
-.wordmark .accent {
-  color: var(--ot-accent);
+  display: block;
 }
 
 .dash-nav {
@@ -111,19 +105,21 @@
   z-index: 15;
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 8px 18px;
-  background: var(--ot-chrome);
-  border-top: 1px solid var(--ot-hairline);
+  gap: 10px;
+  padding: 10px 32px;
+  background: var(--ot-amber-well);
+  border-top: 1px dashed var(--ot-amber-well-border);
   font: 400 11.5px var(--ot-font-mono);
   color: var(--ot-text-3);
 }
 
-.mock-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--ot-amber);
+.mock-tag {
+  border: 1px solid var(--ot-amber);
+  border-radius: 4px;
+  padding: 2px 7px;
+  font: 700 10px var(--ot-font-mono);
+  letter-spacing: 1.5px;
+  color: var(--ot-amber);
   flex-shrink: 0;
 }
 
@@ -181,13 +177,8 @@
 }
 
 .gate-wordmark {
-  font: 700 44px/1 var(--ot-font-display);
-  letter-spacing: -2px;
-  color: var(--ot-text-hero);
-}
-
-.gate-wordmark .accent {
-  color: var(--ot-accent);
+  /* Clear space = 0.5 × mark height, per the lockup rules. */
+  margin-bottom: 18px;
 }
 
 .gate-sub {
@@ -252,6 +243,12 @@
 
 /* ---- earnings hero (the earned-orange rule) ------------------------------------ */
 
+.lp-hero-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 14px;
+}
+
 .hero-card {
   border-radius: 14px;
   padding: 24px 26px;
@@ -295,8 +292,17 @@
   color: var(--ot-text);
 }
 
+.hero-value.is-sm {
+  font-size: 34px;
+  letter-spacing: -1.5px;
+}
+
 .hero-value .unit {
   font: 700 18px var(--ot-font-display);
+}
+
+.hero-value.is-sm .unit {
+  font-size: 15px;
 }
 
 .is-dark .hero-value .unit {
@@ -321,13 +327,72 @@
   font-size: 12.5px;
 }
 
-/* ---- balances (two-figure treatment, locked as secondary) ---------------------- */
+/* ---- utilization cards (amber near cap — a prompt, not an error) ---------------- */
 
-.bal-grid {
+.util-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
 }
+
+.util-card {
+  background: var(--ot-chrome);
+  border: 1px solid var(--ot-hairline);
+  border-radius: var(--ot-r-lg);
+  padding: 20px 22px;
+}
+
+.util-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.util-label {
+  font: 500 10.5px var(--ot-font-mono);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ot-text-3);
+}
+
+.util-pct {
+  font: 700 13px var(--ot-font-mono);
+  color: var(--ot-text);
+}
+
+.util-pct.is-amber {
+  color: var(--ot-amber);
+}
+
+.util-track {
+  margin-top: 12px;
+  height: 8px;
+  background: var(--ot-bg);
+  border: 1px solid var(--ot-hairline);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.util-fill {
+  height: 100%;
+  background: var(--ot-accent);
+}
+
+.util-fill.is-amber {
+  background: var(--ot-amber);
+}
+
+.util-foot {
+  margin-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--ot-text-4);
+}
+
+/* ---- stat cards ------------------------------------------------------------------ */
 
 .stat-card {
   background: var(--ot-chrome);
@@ -365,60 +430,6 @@
 .stat-sub {
   margin: 3px 0 0;
   font: 400 11px var(--ot-font-mono);
-  color: var(--ot-text-4);
-}
-
-/* ---- utilization ----------------------------------------------------------------- */
-
-.util {
-  border: 1px solid var(--ot-hairline-2);
-  border-radius: var(--ot-r-lg);
-  padding: 14px 16px;
-}
-
-.util-caption {
-  font: 500 10px var(--ot-font-mono);
-  letter-spacing: 1.5px;
-  color: var(--ot-text-4);
-  text-transform: uppercase;
-  margin-bottom: 10px;
-}
-
-.util-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 6px 0;
-}
-
-.util-dir {
-  width: 76px;
-  flex-shrink: 0;
-  font: 500 12px var(--ot-font-display);
-  color: var(--ot-text-2);
-}
-
-.util-track {
-  flex: 1;
-  height: 3px;
-  background: var(--ot-hairline);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.util-fill {
-  height: 100%;
-  background: var(--ot-accent);
-  border-radius: 2px;
-}
-
-.util-facts {
-  font-size: 11.5px;
-  color: var(--ot-text-2);
-  white-space: nowrap;
-}
-
-.util-facts.is-empty {
   color: var(--ot-text-4);
 }
 
@@ -745,7 +756,7 @@
     padding: 18px 14px 40px;
   }
 
-  .bal-grid,
+  .util-grid,
   .liq-grid {
     grid-template-columns: 1fr 1fr;
   }

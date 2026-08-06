@@ -9,36 +9,56 @@ afterEach(cleanup);
 const NOW = Date.now();
 
 const entries: MarketplaceEntry[] = [
-  { lpId: "a", name: "Fjord Liquidity", availableSats: "60000", feeBps: 10, feeFixedSats: "0", minSats: "1000", maxSats: "60000", estSeconds: 60, updatedAt: NOW, bestRate: true },
-  { lpId: "b", name: "Meridian Bridge", availableSats: "80000", feeBps: 25, feeFixedSats: "10", minSats: "1000", maxSats: "80000", estSeconds: 90, updatedAt: NOW, bestRate: false },
+  { lpId: "a", name: "Penstock", availableSats: "60000", feeBps: 10, feeFixedSats: "0", minSats: "1000", maxSats: "60000", estSeconds: 60, updatedAt: NOW, bestRate: true },
+  { lpId: "b", name: "Headwater", availableSats: "80000", feeBps: 25, feeFixedSats: "10", minSats: "1000", maxSats: "80000", estSeconds: 90, updatedAt: NOW, bestRate: false },
   { lpId: "c", name: "Dry Dock", availableSats: "0", feeBps: 5, feeFixedSats: "0", minSats: "1", maxSats: "1", estSeconds: 5, updatedAt: NOW, bestRate: false },
 ];
 
 describe("marketplace book", () => {
-  it("totals header: total available, provider count, best rate", () => {
+  it("totals header: total available, best rate, provider count", () => {
     render(<MarketBook entries={entries} />);
-    expect(screen.getByText("140 000 sats")).toBeDefined(); // dry providers excluded
-    expect(screen.getByText("Providers")).toBeDefined();
-    expect(screen.getByText("2")).toBeDefined();
+    expect(screen.getByText("Total available")).toBeDefined();
+    expect(screen.getByText("140 000")).toBeDefined(); // dry providers excluded
     expect(screen.getByText("Best rate")).toBeDefined();
-    expect(screen.getAllByText("0.10%").length).toBeGreaterThan(0);
+    expect(screen.getByText("Providers quoting")).toBeDefined();
+    expect(screen.getByText("2")).toBeDefined();
   });
 
-  it("emphasizes the best-rate row and hides dry providers", () => {
+  it("emphasizes the best-rate row with the filled orange chip; hides dry providers", () => {
     const { container } = render(<MarketBook entries={entries} />);
     const best = container.querySelector(".mk-row.is-best")!;
-    expect(best.textContent).toContain("Fjord Liquidity");
+    expect(best.textContent).toContain("Penstock");
     expect(screen.getByText("BEST RATE")).toBeDefined();
+    // Only one row may carry the emphasis.
+    expect(container.querySelectorAll(".mk-row.is-best")).toHaveLength(1);
     expect(screen.queryByText("Dry Dock")).toBeNull();
-    // Row facts: rate with fixed part, min–max, honest est. time.
-    expect(screen.getByText("0.25% + 10 sats")).toBeDefined();
-    expect(screen.getByText("1 000–80 000")).toBeDefined();
+  });
+
+  it("provider rows carry rate, min–max and honest est. time", () => {
+    render(<MarketBook entries={entries} />);
+    // "10 bps" twice on purpose: the totals header's best rate IS this row's.
+    expect(screen.getAllByText("10 bps")).toHaveLength(2);
+    expect(screen.getByText("25 bps + 10")).toBeDefined();
+    expect(screen.getByText("1 000 — 80 000")).toBeDefined();
     expect(screen.getByText("~90 s")).toBeDefined();
   });
 
-  it("empty state when no provider quotes the direction", () => {
+  it("explains blended routing — the split is the product, said plainly", () => {
+    render(<MarketBook entries={entries} />);
+    expect(screen.getByText(/blended best rate/)).toBeDefined();
+  });
+
+  it("empty book recruits: the void links to the LP guide", () => {
     render(<MarketBook entries={[]} />);
-    expect(screen.getByText("No liquidity right now")).toBeDefined();
+    expect(screen.getByText("The book is empty")).toBeDefined();
+    expect(screen.getByText(/or bring your own/)).toBeDefined();
+    const cta = screen.getByText("Become a provider") as HTMLAnchorElement;
+    expect(cta.getAttribute("href")).toContain("#the-lp-guide");
+  });
+
+  it("a book of only dry providers is an empty book", () => {
+    render(<MarketBook entries={[entries[2]!]} />);
+    expect(screen.getByText("The book is empty")).toBeDefined();
   });
 
   it("stays jargon-free — /market is a user surface", () => {

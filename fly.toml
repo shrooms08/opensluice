@@ -1,0 +1,51 @@
+# fly.toml — OpenSluice single-machine deployment.
+#
+# See https://fly.io/docs/reference/configuration/ for the full reference.
+#
+# Rename `app` to your own before `fly launch --no-deploy && fly deploy`.
+# The two required keys are secrets, never [env]:
+#   fly secrets set OPENSLUICE_OPERATOR_KEY=... OPENSLUICE_WEBHOOK_SECRET=...
+# The gateway refuses to boot without both.
+
+app = 'opensluice-demo'
+primary_region = 'jnb'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  ADAPTER_MODE = 'mock'
+  HOST = '0.0.0.0'
+  OPENSLUICE_DB_PATH = '/data/opensluice.db'
+  PORT = '8080'
+  # The image sets NODE_ENV=production, which disables the operator /dev routes
+  # and the public simulate buttons. To deploy a clickable demo instead of a
+  # locked-down instance, add BOTH of these — one without the other does nothing:
+  #   NODE_ENV = 'development'
+  #   OPENSLUICE_DEV_PUBLIC_SIMULATE = 'true'
+  # Only ever with ADAPTER_MODE=mock; config.ts refuses to boot otherwise.
+
+# SQLite lives on the volume: fly volumes create opensluice_data --size 1
+[[mounts]]
+  source = 'opensluice_data'
+  destination = '/data'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # One always-on machine: SQLite on a single volume, plus an in-process poller
+  # and SSE connections that must not be suspended mid-swap.
+  auto_stop_machines = 'off'
+  auto_start_machines = false
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    interval = '15s'
+    timeout = '3s'
+    grace_period = '10s'
+    method = 'GET'
+    path = '/healthz'
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '512mb'

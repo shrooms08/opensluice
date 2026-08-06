@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <!-- OpenSluice mark. The blade is always Bitcoin orange; the water follows
+       the browser tab's color scheme via the embedded media query. -->
+  <style>
+    .water { fill: #0a0a0a; }
+    @media (prefers-color-scheme: dark) { .water { fill: #f5f5f5; } }
+    @media (prefers-color-scheme: light) { .water { fill: #0a0a0a; } }
+  </style>
+  <rect x="9.5" y="3" width="3" height="7.5" fill="#f7931a"/>
+  <path class="water" d="M3 12h6v3h12v6H3z"/>
+</svg>

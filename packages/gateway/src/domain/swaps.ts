@@ -539,7 +539,7 @@ export async function performLegAction(
 
 /**
  * Sweep swaps whose funding window closed. Untouched swaps expire whole;
- * partially paid ones become `partially_funded` (terminal for Gate 1): unpaid
+ * partially paid ones become `partially_funded` (terminal): unpaid
  * legs expire — their locks vanish with the terminal swap status — and any
  * received funds are written to the ledger as stranded credits for manual
  * resolution (GAPS.md).

@@ -2,11 +2,13 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { ProgressView, deriveView, legChip } from "../src/progress/ProgressView";
+import { CONFIRMATION_TARGET } from "../src/shared/confirmations";
 import type { PublicSwap, PublicSwapLeg } from "../src/shared/types";
 
 afterEach(cleanup);
 
 const NOW = 1_780_000_000_000;
+const N = CONFIRMATION_TARGET;
 
 function leg(partial: Partial<PublicSwapLeg> & { index: number }): PublicSwapLeg {
   return {
@@ -39,6 +41,14 @@ const base: PublicSwap = {
   devSimulate: false,
 };
 
+const single: PublicSwap = {
+  ...base,
+  amountSats: "60000",
+  totalFeeSats: "60",
+  totalReceiveSats: "59940",
+  legs: [leg({ index: 0 })],
+};
+
 describe("deriveView covers every aggregate status", () => {
   it("maps statuses to the 8 views", () => {
     expect(deriveView(null, true)).toBe("notfound");
@@ -59,51 +69,73 @@ describe("ProgressView renders all 8 states from fixtures", () => {
     expect(screen.getByText("LOADING")).toBeDefined();
   });
 
-  it("2 notfound: blank wordmark pattern", () => {
+  it("2 notfound: names nothing, blames nothing", () => {
     render(<ProgressView swap={null} notFound={true} />);
-    expect(screen.getByText("OpenSluice")).toBeDefined();
-    expect(screen.getByText("Not found")).toBeDefined();
+    expect(screen.getByText("No swap here")).toBeDefined();
+    expect(screen.getByText(/doesn't match any swap/)).toBeDefined();
   });
 
-  it("3 awaiting: per-leg instruction cards with amounts, addresses, COPY, countdown", () => {
-    render(<ProgressView swap={base} notFound={false} />);
-    expect(screen.getByText("99 830")).toBeDefined();
-    expect(screen.getByText("AWAITING PAYMENT")).toBeDefined();
-    expect(screen.getByText(/routed across 2 providers/)).toBeDefined();
+  it("3 awaiting, single leg: SEND EXACTLY hero, address, QR, countdown", () => {
+    render(<ProgressView swap={single} notFound={false} />);
+    expect(screen.getByText("SEND EXACTLY")).toBeDefined();
+    expect(screen.getByText("60 000")).toBeDefined();
+    expect(screen.getByText(single.legs[0]!.payTo)).toBeDefined();
+    expect(screen.getByText("COPY")).toBeDefined();
+    expect(screen.getByText("WAITING")).toBeDefined();
     expect(screen.getByText("Pay within")).toBeDefined();
-    expect(screen.getByText(/Part 1 ·/)).toBeDefined();
-    expect(screen.getByText(/Part 2 ·/)).toBeDefined();
-    expect(screen.getByText(base.legs[0]!.payTo)).toBeDefined();
-    expect(screen.getByText(base.legs[1]!.payTo)).toBeDefined();
-    expect(screen.getAllByText("COPY")).toHaveLength(2);
-    expect(screen.getAllByText("WAITING")).toHaveLength(2);
-    // dev buttons hidden unless the payload flags devSimulate
-    expect(screen.queryByText(/Simulate this payment/)).toBeNull();
+    expect(screen.queryByText(/SIMULATE PAYMENT/)).toBeNull();
   });
 
-  it("awaiting with devSimulate: dashed DEV button per unpaid leg", () => {
+  it("3b awaiting, multi-leg: PART n OF N, order-doesn't-matter line, one live card", () => {
+    const { container } = render(<ProgressView swap={base} notFound={false} />);
+    expect(screen.getByText(/routed across 2 providers/)).toBeDefined();
+    expect(screen.getByText(/Order doesn't matter/)).toBeDefined();
+    expect(screen.getByText("PART 1 OF 2")).toBeDefined();
+    expect(screen.getByText("PART 2 OF 2")).toBeDefined();
+    expect(screen.getByText("0 of 2 parts funded")).toBeDefined();
+    // Exactly one card is live (orange border, QR expanded); the rest collapse.
+    expect(container.querySelectorAll(".leg-card.is-live")).toHaveLength(1);
+    expect(container.querySelectorAll(".leg-row")).toHaveLength(1);
+    expect(screen.getByText("UP NEXT")).toBeDefined();
+    expect(screen.getByText(base.legs[0]!.payTo)).toBeDefined();
+    expect(screen.queryByText(base.legs[1]!.payTo)).toBeNull();
+  });
+
+  it("3c multi-leg aggregate counts funded parts and advances the live card", () => {
+    const oneIn: PublicSwap = {
+      ...base,
+      status: "funding",
+      legs: [leg({ index: 0, status: "settled" }), leg({ index: 1, amountSats: "40000" })],
+    };
+    render(<ProgressView swap={oneIn} notFound={false} />);
+    expect(screen.getByText("1 of 2 parts funded")).toBeDefined();
+    expect(screen.getByText(/One part in — one to go/)).toBeDefined();
+    expect(screen.getByText("SETTLED")).toBeDefined();
+    // The live card is now part 2 — its address is the one on screen.
+    expect(screen.getByText(oneIn.legs[1]!.payTo)).toBeDefined();
+  });
+
+  it("awaiting with devSimulate: dashed DEV button on the live leg only", () => {
     render(
       <ProgressView swap={{ ...base, devSimulate: true }} notFound={false} onPayLeg={() => {}} />,
     );
-    expect(screen.getAllByText("Simulate this payment")).toHaveLength(2);
-    expect(screen.getAllByText("DEV")).toHaveLength(2);
+    expect(screen.getAllByText("SIMULATE PAYMENT")).toHaveLength(1);
+    expect(screen.getAllByText("DEV")).toHaveLength(1);
   });
 
-  it("4 settling: confirmation counting in plain words, no instructions", () => {
+  it("4 settling: the calm interstitial, no payment instructions", () => {
     const settling: PublicSwap = {
       ...base,
       status: "settling",
       legs: [
-        leg({ index: 0, status: "seen", confirmations: 2 }),
+        leg({ index: 0, status: "confirmed" }),
         leg({ index: 1, status: "settled", payoutTransferId: "mockxfer_deadbeefdeadbeef" }),
       ],
     };
     render(<ProgressView swap={settling} notFound={false} />);
-    expect(screen.getByText("FINALIZING")).toBeDefined();
-    expect(screen.getByText("CONFIRMING (2/3)")).toBeDefined();
-    expect(screen.getByText("SETTLED")).toBeDefined();
-    expect(screen.queryByText(/Send exactly/)).toBeNull();
-    expect(screen.getByText(/waiting for the network to confirm/)).toBeDefined();
+    expect(screen.getByText("Moving your funds…")).toBeDefined();
+    expect(screen.getByText(/All 2 parts confirmed/)).toBeDefined();
+    expect(screen.queryByText(/SEND EXACTLY/)).toBeNull();
   });
 
   it("5 completed: the Swapped money shot with refs, fee line, new-swap button", () => {
@@ -119,13 +151,14 @@ describe("ProgressView renders all 8 states from fixtures", () => {
     render(<ProgressView swap={completed} notFound={false} />);
     expect(screen.getByText("Swapped")).toBeDefined();
     expect(screen.getByText("99 830")).toBeDefined();
-    expect(screen.getByText("170 sats · 0.17%")).toBeDefined();
+    expect(screen.getByText("sats received")).toBeDefined();
+    expect(screen.getByText(/fee 170 sats · 0\.17%/)).toBeDefined();
     // Refs render middle-truncated: `mockxfer…aaaa`.
     expect(screen.getAllByText(/mockxfer…/).length).toBe(2);
     expect(screen.getByText("New swap")).toBeDefined();
   });
 
-  it("6 expired: calm gray, struck amount, nothing moved", () => {
+  it("6 expired: calm, struck amount, nothing left the wallet", () => {
     const expired: PublicSwap = {
       ...base,
       status: "expired",
@@ -134,39 +167,53 @@ describe("ProgressView renders all 8 states from fixtures", () => {
     render(<ProgressView swap={expired} notFound={false} />);
     expect(screen.getByText("Expired")).toBeDefined();
     expect(screen.getByText("100 000 sats")).toBeDefined();
-    expect(screen.getByText(/nothing moved/)).toBeDefined();
-    expect(screen.getByText("New swap")).toBeDefined();
+    expect(screen.getByText(/Nothing left your wallet/)).toBeDefined();
+    expect(screen.getByText("Start a new swap")).toBeDefined();
   });
 
-  it("7 partially_funded: amber, honest wording, per-leg received view", () => {
+  it("7 partially_funded: amber, honest — held, not swapped, not refunded", () => {
     const partial: PublicSwap = {
       ...base,
       status: "partially_funded",
       legs: [
         leg({ index: 0, status: "settled", payoutTransferId: "mockxfer_cccccccccccccccc" }),
-        leg({ index: 1, status: "expired" }),
+        leg({ index: 1, status: "expired", amountSats: "40000" }),
       ],
     };
     render(<ProgressView swap={partial} notFound={false} />);
-    expect(screen.getByText("NEEDS ATTENTION")).toBeDefined();
-    expect(screen.getByText("Partly received")).toBeDefined();
-    expect(screen.getByText(/arrived after the window/)).toBeDefined();
-    expect(screen.getByText(/contact the/)).toBeDefined();
-    expect(screen.getByText("SETTLED")).toBeDefined();
-    expect(screen.getByText("EXPIRED")).toBeDefined();
+    expect(screen.getByText("PARTIALLY FUNDED")).toBeDefined();
+    expect(screen.getByText("1 of 2 parts arrived in time")).toBeDefined();
+    expect(screen.getByText(/recorded and held/)).toBeDefined();
+    expect(screen.getByText("60 000 sats")).toBeDefined(); // received and held
+    expect(screen.getByText("40 000 sats")).toBeDefined(); // never sent
   });
 
-  it("8 failed: red, calm, sats accounted for", () => {
+  it("7b partial funding never promises a swap or a refund that cannot happen", () => {
+    const partial: PublicSwap = {
+      ...base,
+      status: "partially_funded",
+      legs: [leg({ index: 0, status: "settled" }), leg({ index: 1, status: "expired" })],
+    };
+    const { container } = render(<ProgressView swap={partial} notFound={false} />);
+    // `partially_funded` is terminal and stranded funds need a human (GAPS.md).
+    expect(container.textContent).not.toMatch(/will be swapped|on (its|their) way back|refund/i);
+    expect(container.textContent).toMatch(/contact the operator/i);
+  });
+
+  it("8 failed: red chip, calm body, no invented refund", () => {
     const failed: PublicSwap = {
       ...base,
       status: "failed",
       legs: [leg({ index: 0, status: "failed" }), leg({ index: 1, status: "pending" })],
     };
-    render(<ProgressView swap={failed} notFound={false} />);
-    expect(screen.getByText("Swap failed")).toBeDefined();
-    expect(screen.getByText(/Your sats are accounted for/)).toBeDefined();
-    // Header chip + the failed leg's chip.
-    expect(screen.getAllByText("FAILED").length).toBeGreaterThanOrEqual(2);
+    const { container } = render(<ProgressView swap={failed} notFound={false} />);
+    expect(screen.getByText("SWAP FAILED")).toBeDefined();
+    expect(screen.getByText("Your funds are accounted for")).toBeDefined();
+    expect(screen.getByText(/recorded against this swap and held/)).toBeDefined();
+    expect(screen.getByText("FAILED")).toBeDefined();
+    // There is no refund path in this engine — the copy must not imply one.
+    expect(container.textContent).not.toMatch(/on (its|their) way back|refund ref|rfnd_/i);
+    expect(container.textContent).toMatch(/contact the operator/i);
   });
 
   it("no user surface ever says timelock/vault/VTXO", () => {
@@ -181,17 +228,17 @@ describe("ProgressView renders all 8 states from fixtures", () => {
 });
 
 describe("legChip mapping", () => {
-  it("walks waiting → seen → confirming (n/3) → settled for on-chain legs", () => {
+  it(`walks waiting → payment seen → confirming (n/${N}) → settled for on-chain legs`, () => {
     expect(legChip(leg({ index: 0, status: "pending" })).label).toBe("WAITING");
-    expect(legChip(leg({ index: 0, status: "seen", confirmations: 0 })).label).toBe("SEEN");
-    expect(legChip(leg({ index: 0, status: "seen", confirmations: 1 })).label).toBe("CONFIRMING (1/3)");
-    expect(legChip(leg({ index: 0, status: "seen", confirmations: 2 })).label).toBe("CONFIRMING (2/3)");
+    expect(legChip(leg({ index: 0, status: "seen", confirmations: 0 })).label).toBe("PAYMENT SEEN");
+    expect(legChip(leg({ index: 0, status: "seen", confirmations: 1 })).label).toBe(`CONFIRMING (1/${N})`);
+    expect(legChip(leg({ index: 0, status: "seen", confirmations: 2 })).label).toBe(`CONFIRMING (2/${N})`);
     expect(legChip(leg({ index: 0, status: "settled" })).label).toBe("SETTLED");
   });
 
   it("off-chain deposits read RECEIVED; payouts read SENDING then counting", () => {
     expect(legChip(leg({ index: 0, status: "committed", payChain: "offchain" })).label).toBe("RECEIVED");
     expect(legChip(leg({ index: 0, status: "broadcasting", confirmations: null })).label).toBe("SENDING");
-    expect(legChip(leg({ index: 0, status: "broadcasting", confirmations: 2 })).label).toBe("CONFIRMING (2/3)");
+    expect(legChip(leg({ index: 0, status: "broadcasting", confirmations: 2 })).label).toBe(`CONFIRMING (2/${N})`);
   });
 });

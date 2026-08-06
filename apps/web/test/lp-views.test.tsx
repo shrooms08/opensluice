@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { KeyPrompt } from "../src/lp/LpPage";
-import { OverviewView } from "../src/lp/views/Overview";
+import { OverviewView, utilizationPct } from "../src/lp/views/Overview";
 import { DirectionEditor, bookPosition } from "../src/lp/views/Liquidity";
 import { ExposureView } from "../src/lp/views/Exposure";
 import { HistoryView } from "../src/lp/views/History";
@@ -20,8 +20,8 @@ afterEach(cleanup);
 const NOW = Date.now();
 
 const me: LpMe = {
-  id: "lp_fjord",
-  name: "Fjord Liquidity",
+  id: "lp_penstock",
+  name: "Penstock",
   status: "active",
   createdAt: NOW - 86_400_000,
   liquidity: {
@@ -82,7 +82,7 @@ describe("LP overview", () => {
     expect(hero.className).toContain("is-dark");
     expect(hero.className).not.toContain("is-orange");
     expect(screen.getByText(/Nothing earned yet/)).toBeDefined();
-    expect(screen.getByText("Fjord Liquidity")).toBeDefined();
+    expect(screen.getByText("Overview")).toBeDefined();
   });
 
   it("funded state: the earnings hero goes orange with the exact total", () => {
@@ -92,11 +92,35 @@ describe("LP overview", () => {
     const hero = container.querySelector(".hero-card")!;
     expect(hero.className).toContain("is-orange");
     expect(screen.getByText("170")).toBeDefined();
-    // Locked amounts ride as secondary lines on the balance figures.
-    expect(screen.getByText(/60 000 sats locked by in-flight swap-ins/)).toBeDefined();
-    // Utilization: locked / declared capacity, per direction.
-    expect(screen.getByText(/60 000 \/ 60 000 sats · 100\.0%/)).toBeDefined();
+    expect(screen.getByText("Fees earned · lifetime")).toBeDefined();
+    // Both ledger balances are shown, with their locks as the secondary line.
+    expect(screen.getByText("2 000 000")).toBeDefined();
+    expect(screen.getByText("60 000")).toBeDefined();
+    expect(screen.getByText(/60 000 locked in vault commitments/)).toBeDefined();
+  });
+
+  it("utilization bars read locked / declared capacity per direction", () => {
+    render(<OverviewView me={me} balances={fundedBalances} earnings={fundedEarnings} />);
+    expect(screen.getByText("Utilization · on-chain → instant")).toBeDefined();
+    expect(screen.getByText("100%")).toBeDefined();
+    expect(screen.getByText(/60 000 locked in-flight/)).toBeDefined();
+    expect(screen.getByText(/capacity 60 000 · near cap/)).toBeDefined();
+    // No swap-out offer exists, so its bar says so rather than showing 0%.
     expect(screen.getByText("no offer published")).toBeDefined();
+  });
+
+  it("a bar near its cap goes amber — a prompt to add liquidity, not an error", () => {
+    const { container } = render(
+      <OverviewView me={me} balances={fundedBalances} earnings={fundedEarnings} />,
+    );
+    expect(container.querySelector(".util-fill.is-amber")).not.toBeNull();
+    expect(container.querySelector(".util-pct.is-amber")).not.toBeNull();
+  });
+
+  it("utilizationPct is safe at zero capacity and clamps over-100", () => {
+    expect(utilizationPct("0", "0")).toBe(0);
+    expect(utilizationPct("500", "1000")).toBe(50);
+    expect(utilizationPct("2000", "1000")).toBe(100);
   });
 
   it("speaks the precise LP dialect — vault language is REQUIRED here", () => {
@@ -110,8 +134,8 @@ describe("LP overview", () => {
 
 describe("LP liquidity editor", () => {
   const entries: MarketplaceEntry[] = [
-    { lpId: "lp_fjord", name: "Fjord Liquidity", availableSats: "60000", feeBps: 10, feeFixedSats: "0", minSats: "1000", maxSats: "60000", estSeconds: 60, updatedAt: NOW, bestRate: true },
-    { lpId: "lp_meridian", name: "Meridian Bridge", availableSats: "80000", feeBps: 25, feeFixedSats: "10", minSats: "1000", maxSats: "80000", estSeconds: 90, updatedAt: NOW, bestRate: false },
+    { lpId: "lp_penstock", name: "Penstock", availableSats: "60000", feeBps: 10, feeFixedSats: "0", minSats: "1000", maxSats: "60000", estSeconds: 60, updatedAt: NOW, bestRate: true },
+    { lpId: "lp_headwater", name: "Headwater", availableSats: "80000", feeBps: 25, feeFixedSats: "10", minSats: "1000", maxSats: "80000", estSeconds: 90, updatedAt: NOW, bestRate: false },
   ];
 
   const draft = {
@@ -160,8 +184,8 @@ describe("LP liquidity editor", () => {
   });
 
   it("bookPosition re-ranks against draft fees, not the published ones", () => {
-    // Raising the draft fee above Meridian's 25 bps drops Fjord to #2.
-    expect(bookPosition(entries, "lp_fjord", { ...draft, feeBps: "40" })).toEqual({
+    // Raising the draft fee above Headwater's 25 bps drops Penstock to #2.
+    expect(bookPosition(entries, "lp_penstock", { ...draft, feeBps: "40" })).toEqual({
       rank: 2,
       of: 2,
     });

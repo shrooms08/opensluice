@@ -1,0 +1,66 @@
+# One-command demo: the OpenSluice gateway with the mock settlement adapter and
+# the public "simulate payment" buttons on the swap page switched on.
+#
+#   docker compose -f docker-compose.demo.yml up --build
+#
+# Swap widget: http://localhost:8080/   Marketplace: http://localhost:8080/market
+# LP dashboard: http://localhost:8080/lp (paste an slk_ key from the seed output)
+#
+# Then seed the book — the seeder talks HTTP to a RUNNING gateway, so it cannot
+# run before this stack is up. Either from the host:
+#
+#   OPENSLUICE_OPERATOR_KEY=demo_operator_key \
+#   OPENSLUICE_GATEWAY_URL=http://localhost:8080 \
+#   npm run seed:demo
+#
+# ...or inside the container (scripts/ ships in the image):
+#
+#   docker compose -f docker-compose.demo.yml exec \
+#     -e OPENSLUICE_GATEWAY_URL=http://localhost:8080 \
+#     opensluice npm run seed:demo
+#
+# It registers three LPs, funds their mock ledgers on both chains, publishes
+# both directions' offers, and prints each LP's API key once.
+services:
+  opensluice:
+    build: .
+    environment:
+      OPENSLUICE_OPERATOR_KEY: ${OPENSLUICE_OPERATOR_KEY:-demo_operator_key}
+      OPENSLUICE_WEBHOOK_SECRET: ${OPENSLUICE_WEBHOOK_SECRET:-demo_webhook_secret}
+      # NODE_ENV=development is REQUIRED here, not cosmetic. The Dockerfile bakes
+      # NODE_ENV=production into the image, and loadConfig() computes both
+      # devRoutesEnabled and devPublicSimulate as `NODE_ENV !== "production" &&
+      # adapterMode === "mock"`. Leave production in place and the simulate
+      # buttons silently do nothing and the operator /dev routes 404 — the
+      # gateway still boots, so the failure is invisible until you click.
+      NODE_ENV: development
+      # Refuses to boot unless ADAPTER_MODE=mock: unauthenticated payment
+      # simulation must never reach a real settlement layer.
+      OPENSLUICE_DEV_PUBLIC_SIMULATE: "true"
+      ADAPTER_MODE: mock
+      OPENSLUICE_DB_PATH: /data/opensluice.db
+      HOST: 0.0.0.0
+      PORT: "8080"
+    ports:
+      - "8080:8080"
+    volumes:
+      - opensluice-demo-data:/data
+
+  # Optional one-shot seeder. Uncomment to have `up` seed the book for you; it
+  # waits on the image's /healthz HEALTHCHECK, so the gateway is listening
+  # before it registers anything. Re-running `up` registers a FRESH set of LPs
+  # on top of the existing ones — delete the volume for the canonical book.
+  #
+  # seed:
+  #   build: .
+  #   command: ["npm", "run", "seed:demo"]
+  #   environment:
+  #     OPENSLUICE_OPERATOR_KEY: ${OPENSLUICE_OPERATOR_KEY:-demo_operator_key}
+  #     OPENSLUICE_GATEWAY_URL: http://opensluice:8080
+  #   depends_on:
+  #     opensluice:
+  #       condition: service_healthy
+  #   restart: "no"
+
+volumes:
+  opensluice-demo-data:

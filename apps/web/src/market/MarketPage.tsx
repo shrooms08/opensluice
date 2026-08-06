@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
-import { Wordmark } from "../App";
+import { LogoLockup } from "../shared/Logo";
 import { formatEstimate, formatSats } from "../shared/format";
 import type { Marketplace, MarketplaceEntry, SwapDirection } from "../shared/types";
 import { usePolling } from "../lp/usePolling";
 
 /** Plain-language direction labels — this page is a user surface. */
 const TABS: Array<{ value: SwapDirection; label: string }> = [
-  { value: "swap_in", label: "On-chain → balance" },
-  { value: "swap_out", label: "Balance → on-chain" },
+  { value: "swap_in", label: "On-chain → Instant" },
+  { value: "swap_out", label: "Balance → On-chain" },
 ];
 
 export function MarketPage() {
@@ -33,40 +33,41 @@ export function MarketPage() {
   return (
     <div className="mk">
       <header className="mk-head">
-        <Wordmark />
-        <a className="btn-secondary mk-swap-link" href="/">
-          Swap →
+        <a className="mk-brand" href="/" aria-label="OpenSluice home">
+          <LogoLockup size={24} />
         </a>
+        <nav className="mk-nav">
+          <a href="/">Swap</a>
+          <span className="is-current">Marketplace</span>
+        </nav>
       </header>
+
       <main className="mk-main">
         <div className="mk-title-row">
-          <h1 className="mk-title">The liquidity book</h1>
-          <span className="live-chip">
-            <span className="dot" />
-            LIVE
-          </span>
+          <div>
+            <h1 className="mk-title">Who's providing liquidity right now</h1>
+            <div className="mk-live mono">
+              <span className="dot" />
+              live · refreshes every few seconds
+            </div>
+          </div>
+          <div className="mk-tabs" role="tablist" aria-label="Direction">
+            {TABS.map((tab) => (
+              <button
+                key={tab.value}
+                type="button"
+                role="tab"
+                aria-selected={direction === tab.value}
+                className={direction === tab.value ? "mk-tab is-active" : "mk-tab"}
+                onClick={() => setDirection(tab.value)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <p className="mk-sub">
-          Every provider quoting right now, refreshed every few seconds. Rates come from
-          independent liquidity providers competing for your swap.
-        </p>
 
         {error && <p className="banner-error">{error}</p>}
-
-        <div className="mk-tabs" role="tablist" aria-label="Direction">
-          {TABS.map((tab) => (
-            <button
-              key={tab.value}
-              type="button"
-              role="tab"
-              aria-selected={direction === tab.value}
-              className={direction === tab.value ? "chip is-active" : "chip"}
-              onClick={() => setDirection(tab.value)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
 
         <MarketBook
           entries={
@@ -74,6 +75,7 @@ export function MarketPage() {
           }
         />
       </main>
+
       <footer className="mk-foot mono">
         Anyone can provide liquidity — operators register providers via the API
       </footer>
@@ -81,9 +83,10 @@ export function MarketPage() {
   );
 }
 
-function rateLabel(entry: MarketplaceEntry): string {
-  const pct = (entry.feeBps / 100).toFixed(2);
-  return entry.feeFixedSats === "0" ? `${pct}%` : `${pct}% + ${formatSats(entry.feeFixedSats)} sats`;
+export function rateLabel(entry: MarketplaceEntry): string {
+  return entry.feeFixedSats === "0"
+    ? `${entry.feeBps} bps`
+    : `${entry.feeBps} bps + ${formatSats(entry.feeFixedSats)}`;
 }
 
 export function MarketBook({ entries }: { entries: MarketplaceEntry[] | null }) {
@@ -98,14 +101,20 @@ export function MarketBook({ entries }: { entries: MarketplaceEntry[] | null }) 
   }
 
   const live = entries.filter((e) => BigInt(e.availableSats) > 0n);
+
   if (live.length === 0) {
     return (
-      <div className="mk-empty">
-        <div className="mk-empty-title">No liquidity right now</div>
+      <div className="mk-sheet is-empty">
+        <div className="mk-empty-title">The book is empty</div>
         <p className="mk-empty-sub">
-          No provider is quoting this direction at the moment. Check back shortly — the book
-          refreshes live.
+          No providers are quoting this direction right now. Liquidity usually returns within the
+          hour — or bring your own.
         </p>
+        {/* Repo-relative on purpose: the LP guide lives in the README, and
+            registration is an operator curl, not a self-serve signup flow. */}
+        <a className="btn-primary mk-become" href="README.md#the-lp-guide">
+          Become a provider
+        </a>
       </div>
     );
   }
@@ -117,52 +126,47 @@ export function MarketBook({ entries }: { entries: MarketplaceEntry[] | null }) 
     <>
       <div className="mk-totals">
         <div className="mk-total">
-          <span className="mk-total-label">Available now</span>
-          <span className="mk-total-value mono">{formatSats(total.toString())} sats</span>
-        </div>
-        <div className="mk-total">
-          <span className="mk-total-label">Providers</span>
-          <span className="mk-total-value mono">{live.length}</span>
+          <span className="mk-total-label">Total available</span>
+          <span className="mk-total-value">
+            {formatSats(total.toString())} <span className="unit">sats</span>
+          </span>
         </div>
         <div className="mk-total">
           <span className="mk-total-label">Best rate</span>
-          <span className="mk-total-value mono">{best ? rateLabel(best) : "—"}</span>
+          <span className="mk-total-value is-accent">{best ? rateLabel(best) : "—"}</span>
+        </div>
+        <div className="mk-total">
+          <span className="mk-total-label">Providers quoting</span>
+          <span className="mk-total-value">{live.length}</span>
         </div>
       </div>
 
-      <div className="mk-book" role="list">
+      <div className="mk-sheet">
+        <div className="mk-row mk-row-head">
+          <span>PROVIDER</span>
+          <span className="num">AVAILABLE</span>
+          <span className="num">RATE</span>
+          <span className="num">MIN — MAX</span>
+          <span className="num">EST. TIME</span>
+        </div>
         {live.map((entry) => (
-          <div
-            role="listitem"
-            key={entry.lpId}
-            className={entry.bestRate ? "mk-row is-best" : "mk-row"}
-          >
-            <div className="mk-row-name">
-              {entry.name}
+          <div className={entry.bestRate ? "mk-row is-best" : "mk-row"} key={entry.lpId}>
+            <span className="mk-provider">
+              <span className="mk-name">{entry.name}</span>
               {entry.bestRate && <span className="mk-best-tag">BEST RATE</span>}
-            </div>
-            <div className="mk-row-facts">
-              <span className="mk-fact">
-                <span className="mk-fact-label">available</span>
-                <span className="mono">{formatSats(entry.availableSats)} sats</span>
-              </span>
-              <span className="mk-fact">
-                <span className="mk-fact-label">rate</span>
-                <span className="mono">{rateLabel(entry)}</span>
-              </span>
-              <span className="mk-fact">
-                <span className="mk-fact-label">per swap</span>
-                <span className="mono">
-                  {formatSats(entry.minSats)}–{formatSats(entry.maxSats)}
-                </span>
-              </span>
-              <span className="mk-fact">
-                <span className="mk-fact-label">est. time</span>
-                <span className="mono">{formatEstimate(entry.estSeconds)}</span>
-              </span>
-            </div>
+            </span>
+            <span className="num mk-avail">{formatSats(entry.availableSats)}</span>
+            <span className="num mk-rate">{rateLabel(entry)}</span>
+            <span className="num mk-dim">
+              {formatSats(entry.minSats)} — {formatSats(entry.maxSats)}
+            </span>
+            <span className="num mk-dim">{formatEstimate(entry.estSeconds)}</span>
           </div>
         ))}
+        <p className="mk-blended">
+          Large swaps route across several providers automatically — you always get the blended
+          best rate.
+        </p>
       </div>
     </>
   );

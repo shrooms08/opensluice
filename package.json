@@ -18,7 +18,8 @@
     "start": "npm run start -w @opensluice/gateway",
     "build": "npm run build -w @opensluice/web",
     "dev:web": "npm run dev -w @opensluice/web",
-    "seed:demo": "tsx scripts/seed-demo.ts"
+    "seed:demo": "tsx scripts/seed-demo.ts",
+    "icons": "tsx scripts/make-favicons.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

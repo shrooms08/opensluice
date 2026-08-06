@@ -28,21 +28,21 @@ interface SeedLp {
 /** Distinct enough that routing decisions are visible in the UI. */
 const LPS: SeedLp[] = [
   {
-    name: "Fjord Liquidity",
+    name: "Penstock",
     fundOnchain: "2000000",
     fundOffchain: "60000",
     swapIn: { capacitySats: "60000", feeBps: 10, feeFixedSats: "0", minSats: "1000", maxSats: "60000", estSeconds: 60 },
     swapOut: { capacitySats: "2000000", feeBps: 20, feeFixedSats: "0", minSats: "5000", maxSats: "1500000", estSeconds: 120 },
   },
   {
-    name: "Meridian Bridge",
+    name: "Headwater",
     fundOnchain: "1200000",
     fundOffchain: "80000",
     swapIn: { capacitySats: "80000", feeBps: 25, feeFixedSats: "10", minSats: "1000", maxSats: "80000", estSeconds: 90 },
     swapOut: { capacitySats: "1200000", feeBps: 35, feeFixedSats: "50", minSats: "2000", maxSats: "1200000", estSeconds: 90 },
   },
   {
-    name: "Tidepool",
+    name: "Weir Labs",
     fundOnchain: "500000",
     fundOffchain: "300000",
     swapIn: { capacitySats: "300000", feeBps: 60, feeFixedSats: "100", minSats: "10000", maxSats: "250000", estSeconds: 45 },

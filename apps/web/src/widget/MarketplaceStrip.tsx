@@ -1,53 +1,66 @@
 import { formatSats } from "../shared/format";
-import type { Marketplace, MarketplaceEntry } from "../shared/types";
+import type { Marketplace, MarketplaceEntry, SwapDirection } from "../shared/types";
 
-function summarize(entries: MarketplaceEntry[]): { total: bigint; bestBps: number | null } {
+function summarize(entries: MarketplaceEntry[]): {
+  total: bigint;
+  providers: number;
+  bestBps: number | null;
+} {
   let total = 0n;
+  let providers = 0;
   let bestBps: number | null = null;
   for (const e of entries) {
+    if (BigInt(e.availableSats) <= 0n) continue;
     total += BigInt(e.availableSats);
-    if (BigInt(e.availableSats) > 0n && (bestBps === null || e.feeBps < bestBps)) {
-      bestBps = e.feeBps;
-    }
+    providers += 1;
+    if (bestBps === null || e.feeBps < bestBps) bestBps = e.feeBps;
   }
-  return { total, bestBps };
+  return { total, providers, bestBps };
 }
 
-/** Compact public liquidity book, linking to the full /market page. */
-export function MarketplaceStrip({ market }: { market: Marketplace | null }) {
+/**
+ * The trust line under the widget: live dot, what the book can actually cover
+ * in the direction being quoted, and the way through to the public book.
+ */
+export function MarketplaceStrip({
+  market,
+  direction = "swap_in",
+}: {
+  market: Marketplace | null;
+  direction?: SwapDirection;
+}) {
   if (!market) return null;
 
-  const rows: Array<{ label: string; entries: MarketplaceEntry[] }> = [
-    { label: "On-chain → balance", entries: market.swapIn },
-    { label: "Balance → on-chain", entries: market.swapOut },
-  ];
+  const { total, providers, bestBps } = summarize(
+    direction === "swap_in" ? market.swapIn : market.swapOut,
+  );
 
   return (
     <section className="strip" aria-label="Live liquidity">
-      <div className="strip-head">
-        <span className="strip-caption">LIQUIDITY BOOK</span>
-        <a className="strip-link mono" href="/market">
-          View marketplace →
-        </a>
-      </div>
-      {rows.map(({ label, entries }) => {
-        const { total, bestBps } = summarize(entries);
-        const providers = entries.filter((e) => BigInt(e.availableSats) > 0n).length;
-        return (
-          <div className="strip-row" key={label}>
-            <span className="strip-dir">{label}</span>
-            {providers > 0 ? (
-              <span className="strip-facts mono">
-                {formatSats(total.toString())} sats · {providers}{" "}
-                {providers === 1 ? "provider" : "providers"}
-                {bestBps !== null ? ` · from ${(bestBps / 100).toFixed(2)}%` : ""}
-              </span>
-            ) : (
-              <span className="strip-facts mono is-empty">no liquidity right now</span>
-            )}
-          </div>
-        );
-      })}
+      {providers > 0 ? (
+        <>
+          <span className="strip-live mono">
+            <span className="dot" />
+            {formatSats(total.toString())} sats available
+          </span>
+          <span className="strip-facts mono">
+            {bestBps !== null ? `best ${bestBps} bps · ` : ""}
+            <a href="/market">
+              {providers} {providers === 1 ? "provider" : "providers"}
+            </a>
+          </span>
+        </>
+      ) : (
+        <>
+          <span className="strip-live mono is-empty">
+            <span className="dot" />
+            no liquidity in this direction right now
+          </span>
+          <span className="strip-facts mono">
+            <a href="/market">View the book</a>
+          </span>
+        </>
+      )}
     </section>
   );
 }

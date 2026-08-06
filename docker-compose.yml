@@ -1,0 +1,22 @@
+# Self-hosting OpenSluice: one gateway process, one SQLite volume.
+#   cp .env.example .env   # set OPENSLUICE_OPERATOR_KEY + OPENSLUICE_WEBHOOK_SECRET
+#   docker compose up --build
+# The gateway refuses to boot without those two keys (packages/gateway/src/config.ts).
+# NODE_ENV=production is baked into the image, so dev/operator simulation routes
+# are off here. For the demo with simulate buttons use docker-compose.demo.yml.
+services:
+  opensluice:
+    build: .
+    env_file: .env
+    environment:
+      OPENSLUICE_DB_PATH: /data/opensluice.db
+      HOST: 0.0.0.0
+      PORT: "8080"
+    ports:
+      - "${OPENSLUICE_PORT:-8080}:8080"
+    volumes:
+      - opensluice-data:/data
+    restart: unless-stopped
+
+volumes:
+  opensluice-data:

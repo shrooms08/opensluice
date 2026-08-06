@@ -21,12 +21,3 @@ export function App() {
   if (/^\/market\/?$/.test(path)) return <MarketPage />;
   return <WidgetPage />;
 }
-
-/** Header wordmark — text only this gate; no logo mark exists yet. */
-export function Wordmark() {
-  return (
-    <a className="os-wordmark" href="/">
-      Open<span className="accent">Sluice</span>
-    </a>
-  );
-}

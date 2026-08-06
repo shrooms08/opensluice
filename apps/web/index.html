@@ -6,6 +6,11 @@
     <meta name="color-scheme" content="dark" />
     <meta name="robots" content="noindex" />
     <title>OpenSluice — Swap</title>
+    <!-- SVG first (theme-aware); raster fallbacks for browsers that skip it.
+         The 16px layer uses the mark's optical variant — see docs/brand. -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="alternate icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <style>
       /* Avoid a white flash before the stylesheet loads. */
       body { background: #0a0a0a; margin: 0; }

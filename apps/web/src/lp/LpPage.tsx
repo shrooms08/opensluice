@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { LogoLockup } from "../shared/Logo";
 import { MockBanner } from "../shared/MockBanner";
 import { api, ApiError, clearKey, getStoredKey, storeKey, UNAUTHORIZED_EVENT } from "./api";
 import { useHashRoute, usePolling } from "./usePolling";
@@ -18,6 +19,10 @@ export function LpPage() {
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
   }, []);
 
+  useEffect(() => {
+    if (!unlocked) document.title = "OpenSluice — Provider console";
+  }, [unlocked]);
+
   if (!unlocked) return <KeyPrompt onUnlocked={() => setUnlocked(true)} />;
   return (
     <Shell
@@ -32,7 +37,7 @@ export function LpPage() {
 function GateWordmark() {
   return (
     <div className="gate-wordmark">
-      Open<span className="accent">Sluice</span>
+      <LogoLockup size={36} />
     </div>
   );
 }
@@ -68,8 +73,8 @@ export function KeyPrompt({ onUnlocked }: { onUnlocked: () => void }) {
       <form className="gate-form" onSubmit={(e) => void submit(e)}>
         <GateWordmark />
         <p className="gate-sub">
-          Liquidity provider console. Enter the LP API key you were given at
-          registration (<span className="mono">slk_…</span>) — it was shown exactly once.
+          Provider console. Enter the LP API key you were given at registration (
+          <span className="mono">slk_…</span>) — it was shown exactly once.
         </p>
         {error && <div className="gate-error">{error}</div>}
         <input
@@ -128,7 +133,7 @@ function Shell({ onLock }: { onLock: () => void }) {
   }
 
   useEffect(() => {
-    document.title = `OpenSluice LP — ${VIEW_TITLES[section] ?? "Dashboard"}`;
+    document.title = `OpenSluice — Provider console · ${VIEW_TITLES[section] ?? "Overview"}`;
   }, [section]);
 
   const link = (href: string, label: string, key: string) => (
@@ -140,8 +145,8 @@ function Shell({ onLock }: { onLock: () => void }) {
   return (
     <div className="dash">
       <aside className="dash-side">
-        <a className="wordmark" href="/">
-          Open<span className="accent">Sluice</span>
+        <a className="wordmark" href="/" aria-label="OpenSluice home">
+          <LogoLockup size={20} />
         </a>
         <nav className="dash-nav">
           {link("#/", "Overview", "overview")}

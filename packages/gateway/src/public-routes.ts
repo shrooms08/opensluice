@@ -123,7 +123,7 @@ export async function registerPublicRoutes(
 
   app.get("/", async (_request, reply) => sendApp(reply));
   app.get("/swap/:swapId", async (_request, reply) => sendApp(reply));
-  // LP dashboard + public marketplace (Gate 3). Same shell; pathname picks.
+  // LP dashboard + public marketplace. Same shell; the pathname picks.
   // /lp is served to anyone — the page itself gates on the LP API key.
   app.get("/lp", async (_request, reply) => sendApp(reply));
   app.get("/market", async (_request, reply) => sendApp(reply));
