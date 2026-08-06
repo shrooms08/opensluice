@@ -112,7 +112,7 @@ export function MarketBook({ entries }: { entries: MarketplaceEntry[] | null }) 
         </p>
         {/* Repo-relative on purpose: the LP guide lives in the README, and
             registration is an operator curl, not a self-serve signup flow. */}
-        <a className="btn-primary mk-become" href="README.md#the-lp-guide">
+        <a className="btn-primary mk-become" href="https://github.com/shrooms08/opensluice#the-lp-guide">
           Become a provider
         </a>
       </div>
