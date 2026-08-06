@@ -1,0 +1,189 @@
+/* Public marketplace — the liquidity book on the black canvas. Variables only. */
+
+.mk {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--ot-s-5) var(--ot-s-4);
+}
+
+.mk-head {
+  width: 100%;
+  max-width: 720px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mk-swap-link {
+  text-decoration: none;
+  padding: 8px 14px;
+  font-size: 12px;
+}
+
+.mk-main {
+  width: 100%;
+  max-width: 720px;
+  margin-top: var(--ot-s-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ot-s-4);
+}
+
+.mk-title-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.mk-title {
+  margin: 0;
+  font: 700 30px/1.1 var(--ot-font-display);
+  letter-spacing: -1px;
+  color: var(--ot-text-hero);
+}
+
+.mk-sub {
+  margin: 0;
+  font: 400 13px/1.55 var(--ot-font-display);
+  color: var(--ot-text-3);
+  max-width: 520px;
+}
+
+.mk-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+/* ---- totals header -------------------------------------------------------- */
+
+.mk-totals {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.mk-total {
+  background: var(--ot-chrome);
+  border: 1px solid var(--ot-hairline);
+  border-radius: var(--ot-r-lg);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mk-total-label {
+  font: 500 10px var(--ot-font-mono);
+  letter-spacing: 1.5px;
+  color: var(--ot-text-4);
+  text-transform: uppercase;
+}
+
+.mk-total-value {
+  font: 700 16px var(--ot-font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ot-text);
+}
+
+/* ---- provider rows ---------------------------------------------------------- */
+
+.mk-book {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mk-row {
+  background: var(--ot-chrome);
+  border: 1px solid var(--ot-hairline);
+  border-radius: var(--ot-r-lg);
+  padding: 15px 17px;
+}
+
+.mk-row.is-best {
+  border-color: var(--ot-accent);
+  box-shadow: var(--ot-focus-ring);
+}
+
+.mk-row-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 700 14px var(--ot-font-display);
+  color: var(--ot-text);
+}
+
+.mk-best-tag {
+  background: var(--ot-accent);
+  color: var(--ot-ink);
+  border-radius: 4px;
+  padding: 2px 7px;
+  font: 700 9px var(--ot-font-mono);
+  letter-spacing: 1px;
+}
+
+.mk-row-facts {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+}
+
+.mk-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.mk-fact-label {
+  font: 500 9.5px var(--ot-font-mono);
+  letter-spacing: 1.2px;
+  color: var(--ot-text-4);
+  text-transform: uppercase;
+}
+
+.mk-fact .mono {
+  font-size: 12px;
+  color: var(--ot-text-2);
+}
+
+.mk-row.is-best .mk-fact .mono {
+  color: var(--ot-text);
+}
+
+/* ---- empty + footer ----------------------------------------------------------- */
+
+.mk-empty {
+  text-align: center;
+  padding: 56px 24px;
+  border: 1px dashed var(--ot-hairline);
+  border-radius: var(--ot-r-lg);
+}
+
+.mk-empty-title {
+  font: 700 26px var(--ot-font-display);
+  letter-spacing: -1px;
+  color: var(--ot-text-4);
+}
+
+.mk-empty-sub {
+  margin: 10px auto 0;
+  max-width: 380px;
+  font: 400 13px/1.55 var(--ot-font-display);
+  color: var(--ot-text-3);
+}
+
+.mk-foot {
+  margin-top: auto;
+  padding-top: var(--ot-s-6);
+  font-size: 11px;
+  color: var(--ot-text-4);
+}
+
+@media (max-width: 560px) {
+  .mk-totals {
+    grid-template-columns: 1fr;
+  }
+}

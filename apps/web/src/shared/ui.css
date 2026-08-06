@@ -1,0 +1,375 @@
+/* Shared v2 primitives (OpenTill design system). Variables only — see tokens.css. */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--ot-bg);
+  color: var(--ot-text);
+  font-family: var(--ot-font-display);
+  -webkit-font-smoothing: antialiased;
+}
+
+.mono {
+  font-family: var(--ot-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- wordmark: "Open" text + "Sluice" accent, text only (no mark yet) ------ */
+
+.os-wordmark {
+  font: 700 18px var(--ot-font-display);
+  letter-spacing: -0.03em;
+  color: var(--ot-text);
+  text-decoration: none;
+}
+
+.os-wordmark .accent {
+  color: var(--ot-accent);
+}
+
+/* ---- buttons (tokens: button matrix) --------------------------------------- */
+
+.btn-primary {
+  background: var(--ot-accent);
+  border: none;
+  border-radius: var(--ot-r-md);
+  padding: 11px 18px;
+  font: 700 13px var(--ot-font-display);
+  color: var(--ot-ink);
+  cursor: pointer;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--ot-accent-hover);
+}
+
+.btn-primary:active:not(:disabled) {
+  background: var(--ot-accent-pressed);
+  transform: translateY(1px);
+}
+
+.btn-primary:disabled {
+  background: var(--ot-chrome-2);
+  color: var(--ot-text-3);
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--ot-border-int);
+  border-radius: var(--ot-r-md);
+  padding: 11px 18px;
+  font: 700 13px var(--ot-font-display);
+  color: var(--ot-text);
+  cursor: pointer;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--ot-chrome);
+  border-color: var(--ot-text-3);
+}
+
+.btn-secondary:active:not(:disabled) {
+  background: var(--ot-hairline);
+  transform: translateY(1px);
+}
+
+.btn-secondary:disabled {
+  border-color: var(--ot-hairline);
+  color: var(--ot-text-4);
+  cursor: not-allowed;
+}
+
+/* INVERSE — white fill micro buttons (COPY, MAX): mono uppercase */
+.btn-inverse {
+  background: var(--ot-text);
+  border: none;
+  border-radius: var(--ot-r-sm);
+  padding: 7px 13px;
+  font: 700 10.5px var(--ot-font-mono);
+  letter-spacing: 1px;
+  color: var(--ot-ink);
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+.btn-inverse:hover:not(:disabled):not(.is-active) {
+  background: var(--ot-sheet);
+}
+
+.btn-inverse.is-active {
+  background: var(--ot-hairline);
+  color: var(--ot-text);
+}
+
+.btn-inverse:disabled {
+  background: var(--ot-chrome-2);
+  color: var(--ot-text-3);
+  cursor: not-allowed;
+}
+
+/* ---- inputs ---------------------------------------------------------------- */
+
+.ot-input {
+  width: 100%;
+  background: var(--ot-bg);
+  border: 1px solid var(--ot-border-int);
+  border-radius: var(--ot-r-md);
+  padding: 12px 13px;
+  font: 400 13px var(--ot-font-display);
+  color: var(--ot-text);
+  outline: none;
+}
+
+.ot-input::placeholder {
+  color: var(--ot-text-3);
+}
+
+.ot-input:focus {
+  border-color: var(--ot-accent);
+  box-shadow: var(--ot-focus-ring);
+}
+
+.ot-input.is-error {
+  border-color: var(--ot-red-input-border);
+}
+
+.ot-input.mono {
+  font-family: var(--ot-font-mono);
+}
+
+.field-error {
+  margin-top: 6px;
+  font: 400 12px var(--ot-font-display);
+  color: var(--ot-red);
+}
+
+/* ---- QR block: the single bright object ------------------------------------ */
+
+.ot-qr {
+  box-sizing: border-box;
+  background: var(--ot-sheet);
+  border: 2.5px solid var(--ot-accent);
+  border-radius: var(--ot-r-lg);
+  padding: 12px;
+  width: fit-content;
+  /* Never wider than the card's content box, at any viewport. */
+  max-width: 100%;
+  /* Hold the block's footprint before the image data URL resolves. */
+  min-height: calc(216px + 24px + 5px);
+}
+
+/* Inner QR = the container's inner size exactly; capped so it can't overflow a
+   narrow card (max-width wins on small screens, aspect-ratio keeps it square). */
+.ot-qr img {
+  display: block;
+  width: 216px;
+  height: 216px;
+  max-width: 100%;
+  aspect-ratio: 1 / 1;
+}
+
+.ot-qr.is-compact {
+  padding: 10px;
+  min-height: calc(176px + 20px + 5px);
+}
+
+.ot-qr.is-compact img {
+  width: 176px;
+  height: 176px;
+}
+
+/* ---- live status dot + mono label ------------------------------------------ */
+
+.live-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: 500 10.5px var(--ot-font-mono);
+  letter-spacing: 1px;
+  color: var(--ot-text-2);
+  text-transform: uppercase;
+}
+
+.live-chip .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ot-accent);
+  animation: ot-pulse 1.4s ease-in-out infinite;
+}
+
+.live-chip.is-green {
+  color: var(--ot-green-dark-surface);
+}
+
+.live-chip.is-green .dot {
+  background: var(--ot-green-dark-surface);
+}
+
+.live-chip.is-static .dot {
+  animation: none;
+}
+
+/* ---- status chips (mono uppercase, tone classes) ---------------------------- */
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  font: 500 10.5px var(--ot-font-mono);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ot-text-2);
+}
+
+.status-chip.is-green {
+  color: var(--ot-green-dark-surface);
+}
+
+.status-chip.is-amber {
+  color: var(--ot-amber);
+}
+
+.status-chip.is-red {
+  color: var(--ot-red);
+}
+
+.status-chip.is-gray {
+  color: var(--ot-text-3);
+}
+
+/* ---- wells ------------------------------------------------------------------ */
+
+.well-green {
+  background: var(--ot-green-well);
+  border: 1px solid var(--ot-green-well-border);
+  border-radius: 10px;
+  padding: 13px 14px;
+}
+
+.well-amber {
+  background: var(--ot-amber-well);
+  border: 1px solid var(--ot-amber-well-border);
+  border-radius: 10px;
+  padding: 13px 14px;
+  font: 400 13px/1.55 var(--ot-font-display);
+  color: var(--ot-amber-well-text);
+}
+
+.well-red {
+  background: var(--ot-red-well);
+  border: 1px solid var(--ot-red-well-border);
+  border-radius: 10px;
+  padding: 13px 14px;
+  font: 400 13px/1.5 var(--ot-font-display);
+  color: var(--ot-red);
+}
+
+/* ---- countdown (tokens: shifts at the urgency threshold, class swap only) ---- */
+
+.count-row {
+  display: flex;
+  justify-content: space-between;
+  font: 400 11.5px var(--ot-font-mono);
+  color: var(--ot-text-3);
+}
+
+.count-row .digits {
+  font-weight: 700;
+  color: var(--ot-text);
+}
+
+.count-track {
+  margin-top: 7px;
+  height: 3px;
+  background: var(--ot-hairline);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.count-fill {
+  height: 100%;
+  background: var(--ot-text);
+  border-radius: 2px;
+}
+
+.count.is-urgent .count-row,
+.count.is-urgent .count-row .digits {
+  color: var(--ot-amber);
+}
+
+.count.is-urgent .count-row .digits {
+  animation: ot-pulse 1s ease-in-out infinite;
+}
+
+.count.is-urgent .count-fill {
+  background: var(--ot-amber);
+}
+
+/* ---- spinners --------------------------------------------------------------- */
+
+.ot-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--ot-hairline);
+  border-top-color: var(--ot-green-dark-surface);
+  border-radius: 50%;
+  animation: ot-spin 0.7s linear infinite;
+}
+
+.ot-spinner.is-small {
+  width: 18px;
+  height: 18px;
+  border-width: 2.5px;
+  border-top-color: var(--ot-accent);
+}
+
+/* ---- dev simulate: dashed hairline + DEV chip ------------------------------- */
+
+.dev-btn {
+  font: 500 10.5px var(--ot-font-mono);
+  letter-spacing: 1px;
+  color: var(--ot-text-3);
+  background: transparent;
+  border: 1px dashed var(--ot-border-int);
+  border-radius: var(--ot-r-sm);
+  padding: 7px 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dev-btn:hover:not(:disabled) {
+  color: var(--ot-text-2);
+  border-color: var(--ot-text-3);
+}
+
+.dev-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.dev-chip {
+  background: var(--ot-border-int);
+  color: var(--ot-ink);
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-chip .dot,
+  .count.is-urgent .count-row .digits,
+  .ot-spinner {
+    animation: none;
+  }
+}

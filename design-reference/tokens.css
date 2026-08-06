@@ -1,0 +1,169 @@
+/*
+ * OpenTill v2 design tokens — the ONLY file allowed to contain raw color
+ * values. Names map 1:1 to design/Tokens v2.dc.html. Every component style
+ * consumes these variables; rgba tints below are the documented tint values
+ * from the tokens file (pills, wells, shadows, rings, glows).
+ */
+
+:root {
+  /* ---- color ---- */
+  --ot-bg: #0a0a0a; /* true black canvas — the only page background */
+  --ot-chrome: #141414; /* dark cards, panels, sidebars */
+  --ot-chrome-2: #1a1a1a; /* table headers, hover fills, nested wells */
+  --ot-hairline: #262626; /* borders on dark */
+  --ot-hairline-2: #1e1e1e; /* subtler row rules */
+  --ot-border-int: #333333; /* interactive borders */
+  --ot-sheet: #ffffff; /* white inset working surface + QR block */
+  --ot-sheet-rule: #efefef; /* row rules on sheet */
+  --ot-sheet-rule-heavy: #0a0a0a; /* heavy table header rule on sheet */
+  --ot-text: #f5f5f5; /* primary on dark */
+  --ot-text-hero: #ffffff; /* pure white — hero numerals only */
+  --ot-text-2: #a1a1a1; /* secondary on dark */
+  --ot-text-3: #6b6b6b; /* tertiary, labels */
+  --ot-text-4: #4a4a4a; /* faintest */
+  --ot-ink: #0a0a0a; /* text on sheet + on orange */
+  --ot-ink-2: #333333; /* secondary ink on sheet */
+  --ot-ink-3: #8a8a8a; /* tertiary ink on sheet */
+  --ot-ink-4: #b0b0b0; /* faint ink on sheet (timestamps, disabled pager) */
+  --ot-sheet-btn-rule: #e0e0e0; /* hairline button border on sheet */
+  --ot-sheet-ghost: #e8e8e8; /* expired pill / pale fills on sheet */
+  --ot-sheet-empty: #e0e0e0; /* "Nothing yet" display ink */
+
+  --ot-accent: #f7931a; /* bitcoin orange — the only privileged hue */
+  --ot-accent-hover: #ffa733;
+  --ot-accent-pressed: #d97f12;
+  --ot-accent-link: #b56207; /* on-white link text */
+  --ot-accent-dim-65: rgba(10, 10, 10, 0.65); /* ink at 65% on orange */
+  --ot-accent-dim-55: rgba(10, 10, 10, 0.55); /* ink at 55% on orange */
+
+  --ot-green: #3f9e6a; /* paid/confirmed */
+  --ot-green-dark-surface: #57b380; /* green on dark surfaces */
+  --ot-green-bright: #6fcf97; /* confirmed tint fg */
+  --ot-green-onblack: #7fd6a4; /* confirmed solid pill fg */
+  --ot-green-deep: #2d7a50; /* CORRECTION: PAID solid pill fill on sheet (contrast) + paid numerals on sheet */
+  --ot-green-well: #12241a;
+  --ot-green-well-border: #1e5c38;
+  --ot-green-well-track: #1e3a2a;
+
+  --ot-amber: #d9a441; /* pending tints, underpaid, urgency */
+  --ot-amber-well: #221a0c;
+  --ot-amber-well-border: #4a3a1a;
+  --ot-amber-well-text: #d9c9a5;
+  --ot-amber-solid: #c99a3d; /* underpaid solid pill fill */
+  --ot-amber-solid-deep: #9a7420; /* underpaid numerals on sheet */
+  --ot-pill-pending-solid-bg: #f0e3c8;
+  --ot-pill-pending-solid-fg: #7a5a14;
+
+  --ot-red: #c56a62; /* errors, failed hooks */
+  --ot-red-well: #211110;
+  --ot-red-well-border: #4a2320;
+  --ot-red-input-border: #6b3530;
+  --ot-pill-refundpending-solid-bg: #f3ddda;
+  --ot-pill-refundpending-solid-fg: #8a3a32;
+
+  --ot-gray: #8a8a8a; /* expired, refunded, neutral */
+  --ot-gray-solid: #4a4a4a; /* refunded solid pill fill */
+  --ot-gray-solid-fg: #e0e0e0;
+  --ot-expired-ink: #3d3d3d; /* the big gray "Expired" word (checkout 06) */
+
+  /* ---- pill tints, on dark (bg = status @ documented %) ---- */
+  --ot-tint-pending-bg: rgba(217, 164, 65, 0.14); /* amber 14% */
+  --ot-tint-paid-bg: rgba(63, 158, 106, 0.14); /* green 14% */
+  --ot-tint-confirmed-bg: rgba(63, 158, 106, 0.2); /* green 20% */
+  --ot-tint-expired-bg: rgba(138, 138, 138, 0.14); /* gray 14% */
+  --ot-tint-refundpending-bg: rgba(197, 106, 98, 0.12); /* red 12% */
+  --ot-tint-refunded-bg: rgba(138, 138, 138, 0.18); /* gray 18% */
+
+  /* ---- shadows, rings, glows (documented composites) ---- */
+  --ot-card-shadow: 0 24px 60px rgba(0, 0, 0, 0.6); /* checkout card elevation */
+  --ot-card-shadow-lg: 0 32px 80px rgba(0, 0, 0, 0.6); /* desktop checkout / slide-over */
+  --ot-panel-shadow: -32px 0 80px rgba(0, 0, 0, 0.6);
+  --ot-confirm-glow: 0 24px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(63, 158, 106, 0.15),
+    0 0 48px rgba(63, 158, 106, 0.12); /* confirmed card border glow */
+  --ot-focus-ring: 0 0 0 2px rgba(247, 147, 26, 0.25); /* input focus */
+  --ot-backdrop: rgba(0, 0, 0, 0.55);
+  --ot-spinner-track-onaccent: rgba(10, 10, 10, 0.3);
+
+  /* ---- skeleton shades ---- */
+  --ot-skel-a: #1e1e1e;
+  --ot-skel-b: #292929;
+  --ot-skel-sheet-a: #f0f0f0;
+  --ot-skel-sheet-b: #f7f7f7;
+  --ot-sheet-hover: #fafafa;
+
+  /* ---- radius ---- */
+  --ot-r-sm: 6px; /* tags, mini buttons */
+  --ot-r-md: 8px; /* buttons, inputs, address rows */
+  --ot-r-lg: 12px; /* cards, sheets, QR block */
+  --ot-r-xl: 16px; /* page frames, hero cards */
+  --ot-r-pill: 99px; /* status pills + filter chips */
+
+  /* ---- space scale (4px base) ---- */
+  --ot-s-1: 4px;
+  --ot-s-2: 8px;
+  --ot-s-3: 12px;
+  --ot-s-4: 16px;
+  --ot-s-5: 24px;
+  --ot-s-6: 32px;
+  --ot-s-7: 48px;
+
+  /* ---- type ---- */
+  --ot-font-display: "Space Grotesk", system-ui, sans-serif;
+  --ot-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/*
+ * Payout status pills — extension of the 7-status system (Gate 6 Phase C).
+ * Payouts never share a table with invoices, so analogous states reuse the
+ * invoice pill values for consistency:
+ *   initiated        -> pending values   (amber tint / #f0e3c8 solid)
+ *   broadcasting     -> paid values      (green tint / #2d7a50 solid, correction applied)
+ *   waiting_timelock -> underpaid values (amber tint / #c99a3d solid) + mono amber countdown cell
+ *   settled          -> confirmed values (green 20% tint / black solid, green fg)
+ *   failed           -> refund_pending values (red tint / #f3ddda solid)
+ */
+
+@keyframes ot-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes ot-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ot-settle {
+  0% {
+    transform: scale(1.12);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes ot-shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: 200px 0;
+  }
+}
+
+@keyframes ot-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

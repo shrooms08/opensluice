@@ -1,0 +1,333 @@
+/* Swap widget — the hero surface. Black page, hairline-separated sections. */
+
+.wp {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--ot-s-5) var(--ot-s-4);
+  overflow-x: hidden;
+}
+
+.wp-head {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.wp-main {
+  width: 100%;
+  max-width: 480px;
+  margin-top: var(--ot-s-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ot-s-5);
+}
+
+.wp-title {
+  margin: 0;
+  font: 700 30px/1.1 var(--ot-font-display);
+  letter-spacing: -1px;
+  color: var(--ot-text-hero);
+}
+
+/* ---- direction cards (kind-selector pattern) -------------------------------- */
+
+.wp-directions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--ot-s-3);
+}
+
+.dir-card {
+  text-align: left;
+  background: var(--ot-chrome);
+  border: 1px solid var(--ot-hairline);
+  border-radius: var(--ot-r-lg);
+  padding: 16px 15px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dir-card:hover {
+  border-color: var(--ot-border-int);
+}
+
+.dir-card.is-active {
+  border-color: var(--ot-accent);
+  box-shadow: var(--ot-focus-ring);
+}
+
+.dir-title {
+  font: 700 14px var(--ot-font-display);
+  color: var(--ot-text);
+}
+
+.dir-card.is-active .dir-title {
+  color: var(--ot-text-hero);
+}
+
+.dir-sub {
+  font: 400 12px/1.45 var(--ot-font-display);
+  color: var(--ot-text-3);
+}
+
+@media (max-width: 430px) {
+  .wp-directions {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- amount ------------------------------------------------------------------ */
+
+.wp-amount-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.wp-amount-head label {
+  font: 500 12px var(--ot-font-display);
+  color: var(--ot-text-2);
+}
+
+.wp-amount-input {
+  margin-top: 10px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--ot-border-int);
+  border-radius: 0;
+  padding: 4px 0 10px;
+  font: 700 44px/1 var(--ot-font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -1px;
+  color: var(--ot-text-hero);
+  outline: none;
+  caret-color: var(--ot-accent);
+}
+
+.wp-amount-input::placeholder {
+  color: var(--ot-text-4);
+}
+
+.wp-amount-input:focus {
+  border-bottom-color: var(--ot-accent);
+}
+
+.wp-amount-btc {
+  margin-top: 8px;
+  min-height: 15px;
+  font: 400 12px var(--ot-font-mono);
+  color: var(--ot-text-3);
+}
+
+/* ---- quote panel -------------------------------------------------------------- */
+
+.qp {
+  border: 1px solid var(--ot-hairline);
+  border-radius: var(--ot-r-lg);
+  background: var(--ot-chrome);
+  padding: 18px;
+  animation: ot-fade 0.15s ease-out;
+}
+
+.qp-idle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  font: 400 13px var(--ot-font-display);
+  color: var(--ot-text-3);
+}
+
+.qp-error {
+  border-color: var(--ot-amber-well-border);
+  background: var(--ot-amber-well);
+  font: 400 13px/1.5 var(--ot-font-display);
+  color: var(--ot-amber-well-text);
+}
+
+.qp-error .strong {
+  font-weight: 700;
+  color: var(--ot-amber);
+}
+
+.qp-note {
+  margin-bottom: 12px;
+  font: 500 11px var(--ot-font-mono);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--ot-amber);
+}
+
+.qp-receive-label {
+  font: 500 11px var(--ot-font-mono);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ot-text-3);
+}
+
+.qp-hero {
+  margin-top: 8px;
+  font: 700 40px/1 var(--ot-font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -1px;
+  color: var(--ot-text-hero);
+}
+
+.qp-hero-unit {
+  margin-top: 4px;
+  font: 700 13px var(--ot-font-display);
+  color: var(--ot-accent);
+}
+
+.qp-rows {
+  margin-top: 16px;
+  border-top: 1px solid var(--ot-hairline-2);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.qp-row {
+  display: flex;
+  justify-content: space-between;
+  font: 400 12.5px var(--ot-font-display);
+  color: var(--ot-text-2);
+}
+
+.qp-row .mono {
+  font-size: 12px;
+  color: var(--ot-text);
+}
+
+/* ---- route ------------------------------------------------------------------- */
+
+.qp-route {
+  margin-top: 14px;
+  border-top: 1px solid var(--ot-hairline-2);
+  padding-top: 12px;
+}
+
+.qp-route-caption {
+  font: 500 11px var(--ot-font-mono);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--ot-accent);
+  margin-bottom: 8px;
+}
+
+.qp-route-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 0;
+  font: 400 12.5px var(--ot-font-display);
+  color: var(--ot-text-2);
+}
+
+.qp-route-row .mono {
+  font-size: 12px;
+  color: var(--ot-text);
+}
+
+.qp-route-row.is-single {
+  color: var(--ot-text-3);
+}
+
+.qp-route-row.is-single .qp-route-fee {
+  color: var(--ot-text-2);
+}
+
+.qp-route-lp {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qp-route-fee {
+  color: var(--ot-text-3);
+}
+
+.qp-count {
+  margin-top: 16px;
+}
+
+/* ---- destination + accept ------------------------------------------------------ */
+
+.wp-dest label {
+  display: block;
+  margin-bottom: 8px;
+  font: 500 12px var(--ot-font-display);
+  color: var(--ot-text-2);
+}
+
+.wp-accept {
+  width: 100%;
+  padding: 14px 18px;
+  font-size: 14px;
+}
+
+/* ---- marketplace strip ---------------------------------------------------------- */
+
+.strip {
+  margin-top: var(--ot-s-2);
+  border: 1px solid var(--ot-hairline-2);
+  border-radius: var(--ot-r-lg);
+  padding: 13px 15px;
+}
+
+.strip-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.strip-caption {
+  font: 500 10px var(--ot-font-mono);
+  letter-spacing: 1.5px;
+  color: var(--ot-text-4);
+}
+
+.strip-link {
+  font-size: 10.5px;
+  color: var(--ot-text-3);
+  text-decoration: none;
+}
+
+.strip-link:hover {
+  color: var(--ot-accent);
+}
+
+.strip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  font: 400 12px var(--ot-font-display);
+  color: var(--ot-text-3);
+}
+
+.strip-facts {
+  font-size: 11.5px;
+  color: var(--ot-text-2);
+}
+
+.strip-facts.is-empty {
+  color: var(--ot-text-4);
+}
+
+.wp-foot {
+  margin-top: auto;
+  padding-top: var(--ot-s-6);
+  font-size: 11px;
+  color: var(--ot-text-4);
+}

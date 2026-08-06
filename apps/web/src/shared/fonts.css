@@ -1,0 +1,51 @@
+/*
+ * Self-hosted fonts, latin subset, woff2 ONLY (v2 rule — no woff fallbacks,
+ * no CDN). Files come from @fontsource packages in node_modules; Vite hashes
+ * them into dist/assets. Space Grotesk 400/500/700 + JetBrains Mono 400/700;
+ * mono weight 500 in the styles resolves to 400 (nearest) by design.
+ */
+
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../../../../node_modules/@fontsource/space-grotesk/files/space-grotesk-latin-400-normal.woff2")
+    format("woff2");
+}
+
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../../../../node_modules/@fontsource/space-grotesk/files/space-grotesk-latin-500-normal.woff2")
+    format("woff2");
+}
+
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../../../../node_modules/@fontsource/space-grotesk/files/space-grotesk-latin-700-normal.woff2")
+    format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../../../../node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff2")
+    format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../../../../node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-700-normal.woff2")
+    format("woff2");
+}
