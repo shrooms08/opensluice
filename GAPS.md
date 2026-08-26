@@ -81,17 +81,24 @@ Things the system does not solve yet, in rough order of how much they matter.
 
 These apply only with `ADAPTER_MODE=tachi`. Everything above still applies too.
 
-- **Bitcoin L1 legs are simulated — an SDK gap, not a protocol gap.** Tachi's
-  `TxWithdraw` offboards any ledger VTXO straight to L1 with no vault involved, so
-  the path a real `sendOnchain` needs does exist (INTEGRATION.md §2). What is
-  missing is a builder: the shipped TS SDK provides neither an implementation nor
-  documented payload semantics for `TxWithdraw` or `TxLockForVault`, and
-  hand-rolling a withdrawal payload we have never seen accepted would risk a
-  user's payout going nowhere. So `sendOnchain`, `pollOnchain` and
+- **Bitcoin L1 legs are simulated — an SDK gap, not a protocol gap.** The route a
+  real `sendOnchain` needs does exist: lock the leg's ledger VTXO into a vault with
+  `TxLockForVault`, then exit that vault to L1 — and the exit half is already proven
+  on `tachi-regtest-1` by the sibling project, both cooperatively (five validator
+  signatures) and unilaterally. What is missing is a builder for the lock step: the
+  shipped TS SDK has none for `TxLockForVault` / `TxUnlockFromVault`, though their
+  wire contract is now specified (INTEGRATION.md §2), so this is implementable
+  rather than blocked. So `sendOnchain`, `pollOnchain` and
   `createOnchainDepositAddress` run against an embedded mock and log every call as
   simulated; a swap has one real half and one simulated half, and
-  `capabilities.onchainReal` is the single flag that says so. An earlier version of
-  this file called the exit impossible — that was wrong, and this entry replaces it.
+  `capabilities.onchainReal` is the single flag that says so.
+
+  This entry has been wrong twice, in opposite directions, and both corrections are
+  worth keeping: it first claimed no ledger→L1 exit existed at all, then claimed
+  `TxWithdraw` was that exit. `TxWithdraw` (0x05) is in fact unimplemented beyond
+  generic format checks — no L1 broadcast, no destination semantics — so a payout
+  built on it would commit and move **nothing**, while appearing to succeed. We came
+  close to building exactly that.
 - **Vault liveness cannot be read from the daemon.** `TxVaultClose` (0x12) is
   defined but not wired: the vault `State` field is hardcoded `"open"` because the
   closing/closed/breaching writer is unimplemented, and there is no client-side

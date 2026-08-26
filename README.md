@@ -16,9 +16,10 @@ basis points.
 **Status:** feature-complete, and **settling real off-chain value on Tachi**. With
 `ADAPTER_MODE=tachi` every leg that moves value inside Tachi is a real signed, committed
 ledger transaction on `tachi-regtest-1`; Bitcoin L1 legs are simulated and labelled as
-such, because the shipped Tachi TypeScript SDK provides no builder for the ledger→L1 exit
-— the protocol has one (`TxWithdraw`, no vault required), the tooling does not. The mock
-adapter remains the default and the test/demo/CI mode. Evidence:
+such, because the shipped Tachi TypeScript SDK provides no builder for the ledger→L1
+route — the protocol has one (lock a ledger VTXO into a vault, then take the vault exit
+already proven on L1), the tooling does not. The mock adapter remains the default and the
+test/demo/CI mode. Evidence:
 [`docs/tachi-smoke-output.md`](docs/tachi-smoke-output.md) (verbatim daemon responses)
 and [`docs/tachi-e2e-output.md`](docs/tachi-e2e-output.md) (three real swaps, with
 transaction ids). The boundary is quoted and explained in
@@ -49,11 +50,13 @@ where the user's real Tachi balance moved 7 596 → 8 795 sats against a quoted 
 1 199. Full transcript: [`docs/tachi-e2e-output.md`](docs/tachi-e2e-output.md).
 
 **Bitcoin L1 legs are simulated, and the live instance says so.** This is an SDK gap, not
-a protocol gap: Tachi's `TxWithdraw` offboards any ledger VTXO straight to L1 with no vault
-involved, but the shipped TypeScript SDK ships no builder and no documented payload
-semantics for it, and we will not hand-roll a withdrawal we have never seen accepted — the
-failure mode is a user's payout silently going nowhere. We have asked for a payload
-reference or the Go-side builder to mirror; details in
+a protocol gap. The route exists: lock the leg's ledger VTXO into a vault with
+`TxLockForVault`, then take the vault exit that the sibling project has already driven for
+real on L1 (cooperative refund and unilateral exit both confirmed). What is missing is a
+builder for the lock step — and note that Tachi initially pointed us at `TxWithdraw` as a
+simpler vault-free exit, then inspected their source and retracted it: that type is
+unimplemented, so a payout built on it would commit and move nothing. Details and the
+`TxLockForVault` wire contract in
 [INTEGRATION.md §2](INTEGRATION.md#2-the-l1-boundary--an-sdk-gap-not-a-protocol-gap). The
 adapter reports `onchainReal: false` on `/healthz` and the provider console carries a
 persistent `PARTIAL` bar reading *"Off-chain settlement live on tachi-regtest-1 · L1 legs
@@ -411,9 +414,11 @@ See [docs/screenshots/](docs/screenshots/) for the slots and what each must show
 
 - **Bitcoin L1 legs are simulated, in every mode.** Off-chain settlement is real under
   `ADAPTER_MODE=tachi`, but no Bitcoin moves in either mode. The cause is tooling, not the
-  protocol: `TxWithdraw` exits any ledger VTXO to L1 without a vault, but the shipped TS
-  SDK has no builder for it. The adapter says so through `capabilities.onchainReal: false`
-  rather than through prose. See [INTEGRATION.md](INTEGRATION.md).
+  protocol: a ledger VTXO reaches L1 by being locked into a vault (`TxLockForVault`) and
+  exited from it, and the exit half is already proven on L1 — but the shipped TS SDK has
+  no builder for the lock step. The adapter says so through
+  `capabilities.onchainReal: false` rather than through prose. See
+  [INTEGRATION.md](INTEGRATION.md).
 - **Real mode is custodial.** The coordinator's mnemonic controls the operator float,
   every LP account and every swap-leg key, so an LP's balance is sats under a key the
   coordinator can spend. Fine for a regtest demonstration, not for real money.
