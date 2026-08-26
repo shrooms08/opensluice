@@ -25,8 +25,20 @@ interface SeedLp {
   swapOut: { capacitySats: string; feeBps: number; feeFixedSats: string; minSats: string; maxSats: string; estSeconds: number };
 }
 
-/** Distinct enough that routing decisions are visible in the UI. */
-const LPS: SeedLp[] = [
+/**
+ * Two profiles.
+ *
+ * `mock` (default) uses comfortable round numbers, because nothing there is
+ * real. `regtest` is for ADAPTER_MODE=tachi, where every off-chain sat handed
+ * to an LP is a REAL ledger transfer out of the coordinator's float: the
+ * amounts are small, the swap_in capacity is capped at exactly what was
+ * actually transferred (an LP cannot front what it does not hold), and
+ * swap_out maxSats is deliberately low so a modest swap still demonstrates
+ * routing across several providers.
+ *
+ *   OPENSLUICE_SEED_PROFILE=regtest npm run seed:demo
+ */
+const MOCK_LPS: SeedLp[] = [
   {
     name: "Penstock",
     fundOnchain: "2000000",
@@ -50,6 +62,34 @@ const LPS: SeedLp[] = [
   },
 ];
 
+/** Real off-chain sats. On-chain figures stay large — L1 legs are simulated. */
+const REGTEST_LPS: SeedLp[] = [
+  {
+    name: "Penstock",
+    fundOnchain: "2000000",
+    fundOffchain: "12000",
+    swapIn: { capacitySats: "12000", feeBps: 10, feeFixedSats: "0", minSats: "500", maxSats: "12000", estSeconds: 30 },
+    swapOut: { capacitySats: "2000000", feeBps: 20, feeFixedSats: "0", minSats: "500", maxSats: "5000", estSeconds: 60 },
+  },
+  {
+    name: "Headwater",
+    fundOnchain: "1200000",
+    fundOffchain: "10000",
+    swapIn: { capacitySats: "10000", feeBps: 25, feeFixedSats: "10", minSats: "500", maxSats: "10000", estSeconds: 45 },
+    swapOut: { capacitySats: "1200000", feeBps: 35, feeFixedSats: "0", minSats: "500", maxSats: "5000", estSeconds: 45 },
+  },
+  {
+    name: "Weir Labs",
+    fundOnchain: "500000",
+    fundOffchain: "8000",
+    swapIn: { capacitySats: "8000", feeBps: 60, feeFixedSats: "0", minSats: "500", maxSats: "8000", estSeconds: 30 },
+    swapOut: { capacitySats: "500000", feeBps: 80, feeFixedSats: "0", minSats: "500", maxSats: "5000", estSeconds: 30 },
+  },
+];
+
+const PROFILE = process.env.OPENSLUICE_SEED_PROFILE === "regtest" ? "regtest" : "mock";
+const LPS: SeedLp[] = PROFILE === "regtest" ? REGTEST_LPS : MOCK_LPS;
+
 async function call(
   method: string,
   path: string,
@@ -69,17 +109,25 @@ async function call(
 }
 
 async function main(): Promise<void> {
-  console.log(`Seeding demo LPs against ${BASE}`);
+  console.log(`Seeding demo LPs against ${BASE} (profile: ${PROFILE})`);
+  if (PROFILE === "regtest") {
+    console.log("  off-chain amounts are REAL ledger transfers from the operator float");
+  }
   for (const lp of LPS) {
     const registered = await call("POST", "/api/lps", { name: lp.name }, OPERATOR_KEY!);
     const id = registered.id as string;
     const apiKey = registered.apiKey as string;
 
     await call("POST", "/api/lp/fund", { lpId: id, chain: "onchain", amountSats: lp.fundOnchain }, OPERATOR_KEY!);
-    await call("POST", "/api/lp/fund", { lpId: id, chain: "offchain", amountSats: lp.fundOffchain }, OPERATOR_KEY!);
+    const funded = await call("POST", "/api/lp/fund", { lpId: id, chain: "offchain", amountSats: lp.fundOffchain }, OPERATOR_KEY!);
+    const settlement = funded.settlement as { real?: boolean; transferId?: string; address?: string } | undefined;
     await call("PUT", "/api/lp/liquidity", { swapIn: lp.swapIn, swapOut: lp.swapOut }, apiKey);
 
     console.log(`  ${lp.name}: ${id}`);
+    if (settlement?.real) {
+      console.log(`    off-chain ${lp.fundOffchain} sats → ${settlement.address}`);
+      console.log(`    REAL transfer: ${settlement.transferId}`);
+    }
     console.log(`    LP API key (shown once): ${apiKey}`);
   }
 

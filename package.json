@@ -21,7 +21,9 @@
     "seed:demo": "tsx scripts/seed-demo.ts",
     "icons": "tsx scripts/make-favicons.ts",
     "smoke:tachi": "tsx scripts/tachi-smoke.ts",
-    "e2e:tachi": "tsx scripts/tachi-e2e.ts"
+    "e2e:tachi": "tsx scripts/tachi-e2e.ts",
+    "fund:tachi": "tsx scripts/tachi-fund.ts",
+    "pay:tachi": "tsx scripts/tachi-pay.ts"
   },
   "devDependencies": {
     "@bitcoinerlab/secp256k1": "^1.2.0",

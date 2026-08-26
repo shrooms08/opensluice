@@ -227,3 +227,57 @@ describe("dev route guards", () => {
     }
   });
 });
+
+describe("POST /api/lp/fund", () => {
+  it("marks every credit as real or bookkeeping so nothing downstream guesses", async () => {
+    const lp = await registerLp(h, "Marked");
+    for (const chain of ["offchain", "onchain"] as const) {
+      const res = await h.app.inject({
+        method: "POST",
+        url: "/api/lp/fund",
+        headers: operatorHeaders(),
+        payload: { lpId: lp.id, chain, amountSats: "1000" },
+      });
+      expect(res.statusCode).toBe(201);
+      // The mock adapter settles nothing for real, and says so on both chains.
+      expect(res.json()).toMatchObject({ settlement: { real: false } });
+    }
+    expect(h.repo.ledgerBalance(lp.id, "offchain")).toBe(1000n);
+    expect(h.repo.ledgerBalance(lp.id, "onchain")).toBe(1000n);
+  });
+
+  it("works with dev routes off — funding an LP is an operator task, not a simulation", async () => {
+    const prod = await makeHarness({ devRoutesEnabled: false });
+    try {
+      const lp = await registerLp(prod, "Prodly");
+      const res = await prod.app.inject({
+        method: "POST",
+        url: "/api/lp/fund",
+        headers: operatorHeaders(),
+        payload: { lpId: lp.id, chain: "onchain", amountSats: "1000" },
+      });
+      expect(res.statusCode).toBe(201);
+      expect(prod.repo.ledgerBalance(lp.id, "onchain")).toBe(1000n);
+      // ...while the routes that conjure user deposits stay switched off.
+      const sim = await prod.app.inject({
+        method: "POST",
+        url: "/dev/simulate-onchain-deposit",
+        headers: operatorHeaders(),
+        payload: { address: "mockbtc1qwhatever", amountSats: "1000" },
+      });
+      expect(sim.statusCode).toBe(404);
+    } finally {
+      await prod.destroy();
+    }
+  });
+
+  it("requires the operator key", async () => {
+    const lp = await registerLp(h, "Unauthed");
+    const res = await h.app.inject({
+      method: "POST",
+      url: "/api/lp/fund",
+      payload: { lpId: lp.id, chain: "offchain", amountSats: "1000" },
+    });
+    expect(res.statusCode).toBe(401);
+  });
+});

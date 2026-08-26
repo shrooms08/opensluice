@@ -149,6 +149,71 @@ export async function registerRoutes(app: FastifyInstance, deps: RouteDeps): Pro
       });
     });
 
+    /**
+     * Credit an LP so it can front swaps. Operator-authenticated.
+     *
+     * This lives on the operator API rather than with the dev simulation
+     * routes because in real mode it is a genuine treasury operation: it moves
+     * REAL sats from the operator float to the LP's own derived account, and
+     * books the `lp_ledger` row only if that transfer commits. A deployment
+     * that settles for real needs it in production; the dev routes it used to
+     * sit beside mint fictional value and must stay switched off there.
+     *
+     * Credits that are NOT backed by a transfer (any on-chain credit, and any
+     * credit at all on the mock adapter) are still allowed here: on an instance
+     * that openly reports `onchainReal: false` they are part of the declared
+     * simulation, not a deception. The invariant is that the response says
+     * per-credit whether real sats moved, so nothing downstream has to guess.
+     */
+    api.post("/api/lp/fund", async (request, reply) => {
+      const body = parseOr400(fundLpSchema, request.body, reply);
+      if (!body) return reply;
+      const lp = ctx.repo.getLp(body.lpId);
+      if (!lp) {
+        return reply.code(404).send({ error: "not_found", message: `LP ${body.lpId} not found` });
+      }
+      const amountSats = parseSats(body.amountSats);
+
+      let settlement: Record<string, unknown> | undefined;
+      const adapter = ctx.adapter;
+      if (body.chain === "offchain" && adapter instanceof TachiRealSettlementAdapter) {
+        try {
+          const funded = await adapter.fundOffchainAccount({ ref: `lp:${lp.id}`, amountSats });
+          settlement = { real: true, ...funded, chainId: adapter.capabilities.chainId };
+        } catch (err) {
+          // Never book an off-chain credit whose sats did not move.
+          return reply.code(502).send({
+            error: "settlement_failed",
+            message: `real off-chain funding failed, no ledger row written: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          });
+        }
+      } else {
+        settlement = {
+          real: false,
+          note:
+            body.chain === "onchain"
+              ? "bookkeeping only — L1 legs are simulated in this build, see INTEGRATION.md"
+              : "bookkeeping only — this adapter does not settle off-chain for real",
+        };
+      }
+
+      const entry = ctx.repo.insertLedgerEntry({
+        lpId: lp.id,
+        chain: body.chain,
+        entryType: "fund",
+        amountSats,
+      });
+      return reply.code(201).send({
+        lpId: lp.id,
+        chain: entry.chain,
+        amountSats: entry.amountSats.toString(),
+        balanceSats: ctx.repo.ledgerBalance(lp.id, body.chain).toString(),
+        ...(settlement ? { settlement } : {}),
+      });
+    });
+
     api.get("/api/swaps/:id/webhook-deliveries", async (request, reply) => {
       const params = parseOr400(idParamsSchema, request.params, reply);
       if (!params) return reply;
@@ -405,59 +470,6 @@ export async function registerRoutes(app: FastifyInstance, deps: RouteDeps): Pro
         .send({ error: "unavailable", message: "simulation requires a simulated chain" });
       return null;
     };
-
-    /**
-     * Credit an LP so it can front swaps.
-     *
-     * In mock mode this is a bookkeeping entry and nothing more. In real
-     * (tachi) mode an off-chain credit must be backed by sats that actually
-     * exist inside Tachi, so the route performs a REAL ledger transfer from the
-     * operator float to the LP's own derived account first, and books the row
-     * only if that transfer commits. On-chain credits stay bookkeeping-only in
-     * both modes, because L1 legs are simulated (see INTEGRATION.md).
-     */
-    dev.post("/api/lp/fund", async (request, reply) => {
-      const body = parseOr400(fundLpSchema, request.body, reply);
-      if (!body) return reply;
-      const lp = ctx.repo.getLp(body.lpId);
-      if (!lp) {
-        return reply.code(404).send({ error: "not_found", message: `LP ${body.lpId} not found` });
-      }
-      const amountSats = parseSats(body.amountSats);
-
-      let settlement: Record<string, unknown> | undefined;
-      const adapter = ctx.adapter;
-      if (body.chain === "offchain" && adapter instanceof TachiRealSettlementAdapter) {
-        try {
-          const funded = await adapter.fundOffchainAccount({ ref: `lp:${lp.id}`, amountSats });
-          settlement = { real: true, ...funded, chainId: adapter.capabilities.chainId };
-        } catch (err) {
-          // Never book an off-chain credit whose sats did not move.
-          return reply.code(502).send({
-            error: "settlement_failed",
-            message: `real off-chain funding failed, no ledger row written: ${
-              err instanceof Error ? err.message : String(err)
-            }`,
-          });
-        }
-      } else if (body.chain === "onchain" && adapter.capabilities.onchainReal === false && config.adapterMode === "tachi") {
-        settlement = { real: false, note: "L1 legs are simulated in this build — see INTEGRATION.md" };
-      }
-
-      const entry = ctx.repo.insertLedgerEntry({
-        lpId: lp.id,
-        chain: body.chain,
-        entryType: "fund",
-        amountSats,
-      });
-      return reply.code(201).send({
-        lpId: lp.id,
-        chain: entry.chain,
-        amountSats: entry.amountSats.toString(),
-        balanceSats: ctx.repo.ledgerBalance(lp.id, body.chain).toString(),
-        ...(settlement ? { settlement } : {}),
-      });
-    });
 
     dev.post("/dev/simulate-onchain-deposit", async (request, reply) => {
       const body = parseOr400(simulateDepositSchema, request.body, reply);

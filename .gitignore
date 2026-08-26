@@ -7,3 +7,4 @@ dist/
 .DS_Store
 .tachi-smoke-state.json
 .tachi-e2e-state.json
+.tachi-live-state.json

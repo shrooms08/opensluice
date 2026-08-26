@@ -1,0 +1,53 @@
+# fly.toml for opensluice-LIVE — REAL off-chain Tachi settlement on tachi-regtest-1.
+# The mock demo lives in fly.toml (app = opensluice-demo) and stays as-is.
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'opensluice-live'
+primary_region = 'jnb'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  # Real off-chain settlement; Bitcoin L1 legs remain simulated because Tachi
+  # has no on-the-fly ledger->L1 exit yet (INTEGRATION.md section 2).
+  ADAPTER_MODE = 'tachi'
+  HOST = '0.0.0.0'
+  OPENSLUICE_DB_PATH = '/data/opensluice.db'
+  OPENSLUICE_TACHI_NETWORK = 'regtest'
+  OPENSLUICE_TACHI_RPC_URL = 'https://rpc-regtest.tachibtc.com'
+  # The key index MUST live on the mounted volume: lose it and the adapter
+  # forgets which addresses it handed out, orphaning LP accounts and any leg
+  # a user has already been told to pay.
+  OPENSLUICE_TACHI_STATE_PATH = '/data/tachi-state.json'
+  PORT = '8080'
+  # OPENSLUICE_TACHI_MNEMONIC, the operator key and the webhook secret are set
+  # with `fly secrets set` and never appear here.
+  # OPENSLUICE_DEV_PUBLIC_SIMULATE is deliberately absent (defaults to false):
+  # in real mode an unauthenticated pay-leg call would mint a simulated L1
+  # deposit that triggers a REAL LP payout. loadConfig refuses to boot if it is
+  # ever set true outside mock mode.
+
+[[mounts]]
+  source = 'opensluice_live_data'
+  destination = '/data'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'off'
+  auto_start_machines = false
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    interval = '15s'
+    timeout = '3s'
+    grace_period = '10s'
+    method = 'GET'
+    path = '/healthz'
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '512mb'
