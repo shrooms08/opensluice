@@ -12,3 +12,4 @@ dist/
 !.env.example
 tachi-state.json
 **/tachi-state.json
+.opensluice-demo-secrets.json
