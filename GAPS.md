@@ -108,6 +108,12 @@ These apply only with `ADAPTER_MODE=tachi`. Everything above still applies too.
   (smoke record §9) and would cut detection latency, but polling stays
   authoritative because a dropped WebSocket frame during a restart must not be
   able to lose a payment. Wiring it as a supplement is left open.
+- **A real-mode deployment cannot demonstrate swap_in.** The direction's user-side leg is
+  an L1 deposit, which is simulated, and the routes that fake an arrival are correctly
+  disabled in production — so on `opensluice-live` a swap_in would hand the user a
+  `mockbtc1q…` address nobody can pay. The live LPs therefore publish zero swap_in
+  capacity and the book honestly reports none. This resolves itself the moment L1 legs
+  become real; until then a real-mode operator has to make the same choice deliberately.
 - **No fee strategy.** Off-chain transfers use `getFeeEstimate` clamped to a
   1-sat floor. There is no bumping, no batching of several legs into one
   transaction, and no accounting for the fee against the LP's margin.

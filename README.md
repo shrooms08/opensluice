@@ -23,6 +23,50 @@ and [`docs/tachi-e2e-output.md`](docs/tachi-e2e-output.md) (three real swaps, wi
 transaction ids). The boundary is quoted and explained in
 [INTEGRATION.md](INTEGRATION.md).
 
+## Try it
+
+- **Mock demo (always works):** <https://opensluice-demo.fly.dev>
+- **Real off-chain settlement on `tachi-regtest-1`:** <https://opensluice-live.fly.dev> — real
+  VTXO transactions against a small regtest float, so it may run dry.
+
+**Verified real settlement on `opensluice-live`** (every id below is a committed Tachi
+ledger transaction, verifiable on the daemon):
+
+| What | Transaction |
+|---|---|
+| swap_out — the user's own payment leg | `2cad6f67f7501448c21dc465776f874bd81a31a11a22b2797751792d9b3303ea` |
+| split swap_out — Penstock leg (5 000 sats) | `83855bd83a149485999e4d77dfe6612ec4e28d65398f953ca35b80fb0d7994a8` |
+| split swap_out — Headwater leg (2 000 sats) | `165943387aef696bd48d5d1210595b1740f792059075877d9ad8762093e541c2` |
+| LP funding — operator float → Penstock | `ab36a00da9fed2e6da2e08c37208f383e97bd85f6fa0291091a6c8b912b8dff4` |
+| LP funding — operator float → Headwater | `7157a48fbce54ac568d3522cd6812ad641e5f8a462abc8955b8765492394ebcd` |
+| LP funding — operator float → Weir Labs | `56a5062e8fb138353e1f9b6e0c9f5704ecdc4e3f981e69286723d8c39d7484f9` |
+| operator float top-up (faucet + ledger deposit) | `b21bec8339436c0bb545da87214d275c948b233c092ee61e05e5865baa727a5f` |
+
+The other real leg — an **LP paying a user off-chain** (the swap_in direction) — is proven
+by `npm run e2e:tachi`, e.g. `cc500206d08bef77d91f3e8123154ee8f74c417ab35ab3881b65f73e2453dc3b`,
+where the user's real Tachi balance moved 7 596 → 8 795 sats against a quoted receive of
+1 199. Full transcript: [`docs/tachi-e2e-output.md`](docs/tachi-e2e-output.md).
+
+**Bitcoin L1 legs are simulated, and the live instance says so.** Tachi's team confirmed
+that a vault is currently the only vessel for L1 entry/exit and that on-the-fly exit from
+Tachi to L1 has no cryptographic support yet — quoted in
+[INTEGRATION.md](INTEGRATION.md#2-the-l1-boundary--quoted-not-worked-around). The adapter
+reports `onchainReal: false` on `/healthz` and the provider console carries a persistent
+`PARTIAL` bar reading *"Off-chain settlement live on tachi-regtest-1 · L1 legs simulated"*.
+
+**`opensluice-live` therefore advertises swap_out only.** A swap_in's user-side leg is an
+L1 deposit, which on this instance is simulated — the address handed out is a
+`mockbtc1q…` placeholder nobody can pay, and the routes that would fake its arrival are
+switched off in production, as they must be. Rather than leave that dead end in front of
+users, the live LPs publish zero swap_in capacity, so the widget honestly reports no
+liquidity in that direction. Both directions work fully on the mock demo and under
+`npm run e2e:tachi`.
+
+**Custody caveat.** In real mode every LP account is a key derived from the coordinator's
+single mnemonic, so the coordinator can spend an LP's balance. That is acceptable for a
+regtest demonstration and not for real money; delegated LP-owned keys are an open question
+with the Tachi team (INTEGRATION.md §5, question 2).
+
 ## Settlement modes
 
 | | `ADAPTER_MODE=mock` (default) | `ADAPTER_MODE=tachi` |
@@ -295,16 +339,55 @@ fine and the demo buttons silently do nothing.
 
 ## Deploy to Fly.io
 
+Two configs ship: `fly.toml` (the mock demo) and `fly.live.toml` (real off-chain
+settlement). Both run one always-on 512 MB machine with SQLite on a volume at `/data`;
+secrets are always `fly secrets`, never `[env]`.
+
 ```sh
+# mock demo
 fly launch --no-deploy                # or: fly apps create <your-app>; edit app = in fly.toml
 fly volumes create opensluice_data --size 1 --region jnb
 fly secrets set OPENSLUICE_OPERATOR_KEY=... OPENSLUICE_WEBHOOK_SECRET=...
 fly deploy
-fly open                              # / , /market , /lp
 ```
 
-One always-on 512 MB machine with the SQLite file on the mounted volume at `/data`.
-The two secrets are set with `fly secrets`, never in `fly.toml`.
+```sh
+# real off-chain settlement (tachi-regtest-1)
+fly apps create opensluice-live
+fly volumes create opensluice_live_data --region jnb --size 1 --app opensluice-live
+fly secrets set --app opensluice-live \
+  OPENSLUICE_OPERATOR_KEY=$(openssl rand -hex 24) \
+  OPENSLUICE_WEBHOOK_SECRET=$(openssl rand -hex 24) \
+  OPENSLUICE_DEV_PUBLIC_SIMULATE=false \
+  OPENSLUICE_TACHI_MNEMONIC="<throwaway BIP-39 mnemonic>"
+fly deploy --config fly.live.toml --remote-only
+
+# then fund the float and the providers (both are REAL transfers)
+OPENSLUICE_TACHI_MNEMONIC="<same>" AMOUNT_SATS=60000 npm run fund:tachi
+OPENSLUICE_SEED_PROFILE=regtest OPENSLUICE_OPERATOR_KEY=<key> \
+  OPENSLUICE_GATEWAY_URL=https://opensluice-live.fly.dev npm run seed:demo
+```
+
+`fly.live.toml` keeps the adapter's key index at `/data/tachi-state.json`, **on the
+volume**: lose that file and the adapter forgets which addresses it handed out, orphaning
+LP accounts and any leg a user has already been told to pay. `OPENSLUICE_DEV_PUBLIC_SIMULATE`
+must stay `false` — in real mode an unauthenticated pay-leg call would mint a simulated L1
+deposit that triggers a **real** LP payout, and `loadConfig` refuses to boot if it is ever
+set true outside mock mode.
+
+### Operating a real-mode instance
+
+```sh
+OPENSLUICE_TACHI_MNEMONIC="…" npm run fund:tachi                    # faucet + ledger deposit
+OPENSLUICE_TACHI_MNEMONIC="…" TO_ADDRESS=bcrt1p… AMOUNT_SATS=20000 npm run fund:tachi
+ADDRESS=bcrt1p… AMOUNT_SATS=2000 npm run pay:tachi                  # pay a real leg as a user
+fly logs --app opensluice-live                                      # real broadcasts + SIMULATED L1 lines
+```
+
+Check the operator and LP floats before a demo and refill from the faucet; a small regtest
+float runs dry quickly. A wallet paying a multi-leg swap must let each payment commit
+before making the next (`code=5 vtxo already pending in mempool`), so expect a split swap
+to take roughly a block per leg.
 
 ## Screenshots
 
@@ -320,6 +403,9 @@ See [docs/screenshots/](docs/screenshots/) for the slots and what each must show
 - **Real mode is custodial.** The coordinator's mnemonic controls the operator float,
   every LP account and every swap-leg key, so an LP's balance is sats under a key the
   coordinator can spend. Fine for a regtest demonstration, not for real money.
+- **The live instance can only demonstrate swap_out.** swap_in needs a real L1 deposit
+  from the user, and L1 is simulated — see [Try it](#try-it). Both directions run fully
+  on the mock demo and under `npm run e2e:tachi`.
 - **No LP fee payout.** Providers can see every sat they have earned, down to the leg,
   but there is no withdrawal path — fees accumulate as ledger balance and stay there.
 - **Single node, single operator, SQLite.** The coordinator is fully trusted: it books

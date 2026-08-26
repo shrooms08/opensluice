@@ -8,3 +8,7 @@ dist/
 .tachi-smoke-state.json
 .tachi-e2e-state.json
 .tachi-live-state.json
+.env.*
+!.env.example
+tachi-state.json
+**/tachi-state.json
