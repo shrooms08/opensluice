@@ -16,8 +16,9 @@ basis points.
 **Status:** feature-complete, and **settling real off-chain value on Tachi**. With
 `ADAPTER_MODE=tachi` every leg that moves value inside Tachi is a real signed, committed
 ledger transaction on `tachi-regtest-1`; Bitcoin L1 legs are simulated and labelled as
-such, because Tachi has no on-the-fly ledger→L1 exit yet. The mock adapter remains the
-default and the test/demo/CI mode. Evidence:
+such, because the shipped Tachi TypeScript SDK provides no builder for the ledger→L1 exit
+— the protocol has one (`TxWithdraw`, no vault required), the tooling does not. The mock
+adapter remains the default and the test/demo/CI mode. Evidence:
 [`docs/tachi-smoke-output.md`](docs/tachi-smoke-output.md) (verbatim daemon responses)
 and [`docs/tachi-e2e-output.md`](docs/tachi-e2e-output.md) (three real swaps, with
 transaction ids). The boundary is quoted and explained in
@@ -47,12 +48,16 @@ by `npm run e2e:tachi`, e.g. `cc500206d08bef77d91f3e8123154ee8f74c417ab35ab3881b
 where the user's real Tachi balance moved 7 596 → 8 795 sats against a quoted receive of
 1 199. Full transcript: [`docs/tachi-e2e-output.md`](docs/tachi-e2e-output.md).
 
-**Bitcoin L1 legs are simulated, and the live instance says so.** Tachi's team confirmed
-that a vault is currently the only vessel for L1 entry/exit and that on-the-fly exit from
-Tachi to L1 has no cryptographic support yet — quoted in
-[INTEGRATION.md](INTEGRATION.md#2-the-l1-boundary--quoted-not-worked-around). The adapter
-reports `onchainReal: false` on `/healthz` and the provider console carries a persistent
-`PARTIAL` bar reading *"Off-chain settlement live on tachi-regtest-1 · L1 legs simulated"*.
+**Bitcoin L1 legs are simulated, and the live instance says so.** This is an SDK gap, not
+a protocol gap: Tachi's `TxWithdraw` offboards any ledger VTXO straight to L1 with no vault
+involved, but the shipped TypeScript SDK ships no builder and no documented payload
+semantics for it, and we will not hand-roll a withdrawal we have never seen accepted — the
+failure mode is a user's payout silently going nowhere. We have asked for a payload
+reference or the Go-side builder to mirror; details in
+[INTEGRATION.md §2](INTEGRATION.md#2-the-l1-boundary--an-sdk-gap-not-a-protocol-gap). The
+adapter reports `onchainReal: false` on `/healthz` and the provider console carries a
+persistent `PARTIAL` bar reading *"Off-chain settlement live on tachi-regtest-1 · L1 legs
+simulated"*.
 
 **`opensluice-live` therefore advertises swap_out only.** A swap_in's user-side leg is an
 L1 deposit, which on this instance is simulated — the address handed out is a
@@ -107,7 +112,7 @@ OPENSLUICE_OPERATOR_KEY=... OPENSLUICE_WEBHOOK_SECRET=... npm run dev
 
 ```sh
 npm install
-npm test                # 197 tests: router, state machines, adapter, auth, LP isolation, e2e, SSE, UI
+npm test                # 200 tests: router, state machines, adapter, auth, LP isolation, e2e, SSE, UI
 npm run typecheck
 npm run build           # builds apps/web into apps/web/dist (gateway serves it)
 
@@ -405,10 +410,10 @@ See [docs/screenshots/](docs/screenshots/) for the slots and what each must show
 ## Limitations, stated plainly
 
 - **Bitcoin L1 legs are simulated, in every mode.** Off-chain settlement is real under
-  `ADAPTER_MODE=tachi`, but no Bitcoin moves in either mode: Tachi has no on-the-fly
-  ledger→L1 exit yet, and the team confirmed a vault is currently the only vessel for L1
-  entry/exit. The adapter says so through `capabilities.onchainReal: false` rather than
-  through prose. See [INTEGRATION.md](INTEGRATION.md).
+  `ADAPTER_MODE=tachi`, but no Bitcoin moves in either mode. The cause is tooling, not the
+  protocol: `TxWithdraw` exits any ledger VTXO to L1 without a vault, but the shipped TS
+  SDK has no builder for it. The adapter says so through `capabilities.onchainReal: false`
+  rather than through prose. See [INTEGRATION.md](INTEGRATION.md).
 - **Real mode is custodial.** The coordinator's mnemonic controls the operator float,
   every LP account and every swap-leg key, so an LP's balance is sats under a key the
   coordinator can spend. Fine for a regtest demonstration, not for real money.

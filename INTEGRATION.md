@@ -4,7 +4,9 @@
 `ADAPTER_MODE=tachi`, every leg that moves value *inside* Tachi is a real,
 signed, committed ledger transaction on `tachi-regtest-1`. Every leg that would
 cross to Bitcoin L1 is simulated, clearly labelled, and reported as such by the
-adapter itself.
+adapter itself — not because the protocol lacks a ledger→L1 exit (it has one,
+`TxWithdraw`, needing no vault) but because the shipped TypeScript SDK provides
+no builder for it. See §2.
 
 The evidence is in this repository and reproducible:
 
@@ -41,7 +43,7 @@ rather than restating it, so they cannot drift apart.
 | `fundOffchainAccount(...)` | **REAL** | The same primitive, operator float → an LP's own derived account. This is how a provider comes to hold sats it can front. |
 | `createOnchainDepositAddress(ref)` | *simulated* | Returns a `mockbtc1q…` address — unmistakably not a Bitcoin address — and logs `SIMULATED L1 deposit address`. |
 | `pollOnchain(cursor)` | *simulated* | Mock confirmations, driven by the operator-only `/dev/advance-blocks` route. |
-| `sendOnchain(...)` | *simulated* | Logs `SIMULATED L1 payout — no Bitcoin moved` and returns a `mocktx_…` id. |
+| `sendOnchain(...)` | *simulated* | Logs `SIMULATED L1 payout — no Bitcoin moved` and returns a `mocktx_…` id. The real implementation is a `TxWithdraw` spending the leg's own ledger VTXO; blocked on an SDK builder, not on the protocol (§2). |
 
 ### What that means per direction
 
@@ -55,38 +57,61 @@ Either way, the leg that moves value inside Tachi is real. In the e2e run a
 user's real balance moved `7 596 → 8 795 sats`, matching the quoted receive of
 1 199 sats exactly.
 
-## 2. The L1 boundary — quoted, not worked around
+## 2. The L1 boundary — an SDK gap, not a protocol gap
 
-The Tachi team's position, confirmed directly:
+**Correction (August 2026).** This section previously stated that a vault was
+the only vessel for L1 entry/exit and that no on-the-fly ledger→L1 exit existed.
+That was our reading of an earlier exchange, and it is **wrong**. The Tachi team
+has since set out the actual picture *(Telegram, August 2026; paraphrased)*:
 
-> A vault is the only vessel for L1 entry/exit, and on-the-fly exit from Tachi
-> to L1 has no cryptographic support yet — it "will be addressed soon". A
-> vault-less receiver exiting to L1 was mentioned as possible, but it is
-> unconfirmed and has no SDK builder.
+- **`TxVaultOpen`** registers an L1-funded vault directly against an **L1
+  outpoint**. It never touches the ledger-VTXO pool at all.
+- **`TxLockForVault` / `TxUnlockFromVault`** are the real ledger→vault bridge:
+  they lock an existing ledger VTXO under a vault address and release it back.
+  This is the path for putting ordinary receipt VTXOs into vault custody.
+- **`TxWithdraw`** is a plain ledger→L1 exit that needs **no vault at all**. Any
+  ledger VTXO — including a swap leg's receipts — can offboard straight to L1
+  through it.
 
-So there is no honest way to implement `sendOnchain` today. The options were to
-fake it, to refuse to run at all, or to simulate it and say so on every call.
-We chose the third: `capabilities.onchainReal` is `false`, every simulated
-action logs that it is simulated, the mock L1 hands out addresses that could
-never be mistaken for Bitcoin addresses, and the UI carries a persistent
-`PARTIAL` bar reading *"Off-chain settlement live on tachi-regtest-1 · L1 legs
-simulated"*.
+Their recommendation: `TxWithdraw` is the more direct route for "real value in →
+real payout out"; reach for `TxLockForVault` first only if you specifically want
+the quorum-cosigned / unilateral-exit guarantees applied to those funds.
 
-**What changes when on-the-fly exit ships.** Only the three on-chain methods,
-and only inside the adapter:
+So a ledger→L1 path for plain-key VTXO holders **does exist**. Anything in this
+repository that used to say otherwise was mistaken and has been corrected.
 
-1. `createOnchainDepositAddress` returns a real watched Bitcoin address (vault
-   deposit or a derived L1 address).
+### Why OpenSluice's L1 legs are still simulated
+
+The blocker is tooling, not the protocol. The shipped TypeScript SDK
+(`@tachibtc/tachi-sdk-ts` 0.2.1, `@tachibtc/taurus-vault-core` 0.3.3) provides
+**no builder and no documented payload semantics** for either `TxWithdraw` or
+`TxLockForVault`. We can construct a `TRANSFER` because `buildSignedTransferHex`
+had a documented shape to copy from and we verified it against the live daemon;
+we cannot responsibly hand-roll a withdrawal payload we have never seen accepted,
+because the failure mode is a user's payout silently going nowhere.
+
+We have asked the Tachi team for either a payload reference or the Go-side
+builder to mirror. Until one arrives, `sendOnchain` stays simulated and says so
+on every call: `capabilities.onchainReal` is `false`, the mock L1 hands out
+addresses that could never be mistaken for Bitcoin addresses, and the UI carries
+a persistent `PARTIAL` bar reading *"Off-chain settlement live on
+tachi-regtest-1 · L1 legs simulated"*.
+
+**What changes when a `TxWithdraw` builder lands.** Only the three on-chain
+methods, and only inside the adapter:
+
+1. `createOnchainDepositAddress` returns a real watched Bitcoin address.
 2. `pollOnchain` reads real confirmations — the daemon's Bitcoin RPC proxy
    already works (`scantxoutset` is exercised in the smoke record), so this is
    the smaller half.
-3. `sendOnchain` builds the exit/withdrawal transaction with whatever builder
-   ships, and applies the same discipline `sendOffchain` already does: verify
-   the verdict, wait for the commit, and only then report success.
+3. `sendOnchain` builds a `TxWithdraw` spending the leg's own ledger VTXO, and
+   applies the same discipline `sendOffchain` already does: verify the verdict,
+   wait for the commit, and only then report success. No vault is required for
+   this path.
 
 Then `onchainReal` flips to `true` and the banner disappears on its own. Nothing
-outside the adapter changes: the router, the ledger, the state machines, the
-LP console and all 197 tests are adapter-agnostic.
+outside the adapter changes: the router, the ledger, the state machines, the LP
+console and all 200 tests are adapter-agnostic.
 
 ## 3. Hard-won facts the code depends on
 
@@ -173,14 +198,53 @@ Three consequences for OpenSluice:
    there, so a signet deployment works with the funding approach already in the
    repo; only `OPENSLUICE_TACHI_NETWORK` and the RPC URL change.
 
+**The ledger → vault bridge, and the ledger → L1 exit — resolved.** *(Tachi
+team, Telegram, August 2026; paraphrased.)* Three distinct transaction types,
+which we had previously conflated into one missing capability:
+
+| Type | What it actually does |
+| --- | --- |
+| `TxVaultOpen` | Registers an **L1-funded** vault against an L1 outpoint. Never touches the ledger-VTXO pool. |
+| `TxLockForVault` / `TxUnlockFromVault` | **The ledger→vault bridge.** Locks an existing ledger VTXO under a vault address, and releases it back. This is how ordinary receipt VTXOs enter vault custody. |
+| `TxWithdraw` | A plain **ledger→L1 exit requiring no vault**. Any ledger VTXO, including a swap leg's receipts, can offboard straight to L1. |
+
+Tachi's recommendation is that `TxWithdraw` is the more direct answer to "real
+value in → real payout out", and that `TxLockForVault` is what you reach for
+first only when you specifically want the quorum-cosigned / unilateral-exit
+guarantees applied to those funds.
+
+This is why the sibling project's vault spike
+([`../opentill/docs/tachi-vault-spike.md`](../opentill/docs/tachi-vault-spike.md))
+could only ever exit funds it had deposited itself: `TxVaultOpen` binds an L1
+outpoint, so a vault opened that way has no relationship to ledger VTXOs earned
+from receipts. `TxLockForVault` is the step that was missing, and we did not
+know it existed. OpenSluice ran no vault spike of its own; the finding is
+recorded here because it changes what this document had called impossible.
+
+**`TxVaultClose` (0x12) is defined but not wired.** The vault `State` field is
+hardcoded `"open"` because the closing/closed/breaching writer is not
+implemented, and there is no client-side `TxVaultClose` to send. Practical
+consequence for anyone building on this: **do not treat the daemon's reported
+vault state as liveness**. Track it from your own L1 exit-leaf observation
+instead.
+
+**CSV timelock: no protocol minimum.** The protocol enforces only `> 0` and
+`<= 65535`. The sibling spike's `csvBlocks=1` was accepted purely because
+nothing rejects it — in Tachi's words, that is not a signal it is safe. The
+conventional choice is **1008 blocks (~7 days)**; the real lower bound should be
+derived from your own monitoring latency, i.e. how long you might fail to notice
+a breach and still be able to respond. Any OpenSluice vault work should start
+from 1008 and justify downward, never upward from 1.
+
 ### Still open
 
-1. **The ledger → vault bridge.** The one blocker for `onchainReal: true`, and
-   the question that governs whether OpenSluice's L1 legs could ever be real. A
-   vault is currently the only vessel for L1 entry/exit (§2), and there is no
-   on-the-fly exit from the ledger. Will there be an SDK builder for the
-   wire-level `TxWithdraw`, and is the vault-less receiver exit real?
-   Everything else on our side is ready.
+1. **An SDK builder for `TxWithdraw` (and `TxLockForVault`).** Now the only
+   blocker for `onchainReal: true`. The protocol path exists; the shipped TS SDK
+   has no builder and no documented payload semantics for either type, and we
+   will not hand-roll a withdrawal payload we have never seen accepted — the
+   failure mode is a user's payout silently going nowhere. We have asked for a
+   payload reference or the Go-side builder to mirror. Everything else on our
+   side is ready.
 2. **Sub-account / delegated ownership.** Today every LP account is a key
    derived from the coordinator's single mnemonic, so the coordinator can spend
    an LP's balance. Is there a supported way for an LP to own its VTXOs under

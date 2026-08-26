@@ -81,11 +81,28 @@ Things the system does not solve yet, in rough order of how much they matter.
 
 These apply only with `ADAPTER_MODE=tachi`. Everything above still applies too.
 
-- **Bitcoin L1 legs are simulated.** Not a shortcut we chose: Tachi has no
-  on-the-fly ledger→L1 exit yet (quoted in INTEGRATION.md §2). `sendOnchain`,
-  `pollOnchain` and `createOnchainDepositAddress` run against an embedded mock and
-  log every call as simulated. A swap therefore has one real half and one
-  simulated half, and `capabilities.onchainReal` is the single flag that says so.
+- **Bitcoin L1 legs are simulated — an SDK gap, not a protocol gap.** Tachi's
+  `TxWithdraw` offboards any ledger VTXO straight to L1 with no vault involved, so
+  the path a real `sendOnchain` needs does exist (INTEGRATION.md §2). What is
+  missing is a builder: the shipped TS SDK provides neither an implementation nor
+  documented payload semantics for `TxWithdraw` or `TxLockForVault`, and
+  hand-rolling a withdrawal payload we have never seen accepted would risk a
+  user's payout going nowhere. So `sendOnchain`, `pollOnchain` and
+  `createOnchainDepositAddress` run against an embedded mock and log every call as
+  simulated; a swap has one real half and one simulated half, and
+  `capabilities.onchainReal` is the single flag that says so. An earlier version of
+  this file called the exit impossible — that was wrong, and this entry replaces it.
+- **Vault liveness cannot be read from the daemon.** `TxVaultClose` (0x12) is
+  defined but not wired: the vault `State` field is hardcoded `"open"` because the
+  closing/closed/breaching writer is unimplemented, and there is no client-side
+  `TxVaultClose` to send. Any future OpenSluice vault work must track liveness from
+  its own L1 exit-leaf observation rather than trusting the reported state.
+- **CSV timelocks have no protocol floor.** The protocol accepts anything `> 0` and
+  `<= 65535`, so a dangerously short timelock is accepted silently. The conventional
+  value is 1008 blocks (~7 days), and the real lower bound should come from how long
+  we might fail to notice a breach and still respond. OpenSluice ships no vault code
+  today; if it gains any, 1008 is the starting point and the sibling spike's
+  `csvBlocks=1` is test-only and must not be copied.
 - **Funding only works below mainnet.** Every sat in this system enters through a
   self-signed ledger deposit with no L1 backing — that is how `npm run fund:tachi`
   fills the operator float, and every LP credit is a transfer out of that float.
