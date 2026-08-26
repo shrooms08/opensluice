@@ -50,6 +50,14 @@ interface LogEntry<E> {
  * gateway's lp_ledger's job, not the adapter's.
  */
 export class MockSettlementAdapter implements SettlementAdapter {
+  /** Everything here is simulated — that is the whole point of this adapter. */
+  readonly capabilities = {
+    onchainReal: false,
+    offchainReal: false,
+    label: "mock",
+    chainId: null,
+  } as const;
+
   readonly mode = "mock" as const;
 
   #initialized = false;

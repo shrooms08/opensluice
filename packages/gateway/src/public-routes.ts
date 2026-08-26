@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
 import type { PublicSwapDTO, Swap } from "@opensluice/shared";
-import { MockSettlementAdapter } from "@opensluice/adapter";
+import { MockSettlementAdapter, TachiRealSettlementAdapter } from "@opensluice/adapter";
 import type { GatewayConfig } from "./config";
 import type { ServiceContext } from "./domain/swaps";
 import { toPublicSwapDTO } from "./serialize";
@@ -134,10 +134,19 @@ export async function registerPublicRoutes(
   if (!config.devPublicSimulate) return;
 
   app.post("/dev/swaps/:swapId/pay-leg/:legIndex", async (request, reply) => {
-    if (!(ctx.adapter instanceof MockSettlementAdapter)) {
+    // Only ever drives a simulated chain: the whole mock adapter, or the real
+    // adapter's embedded (simulated) L1. A real off-chain leg cannot be
+    // "simulated" — the user has to actually pay it.
+    const sim =
+      ctx.adapter instanceof MockSettlementAdapter
+        ? ctx.adapter
+        : ctx.adapter instanceof TachiRealSettlementAdapter
+          ? ctx.adapter.simulatedL1()
+          : null;
+    if (!sim) {
       return reply
         .code(409)
-        .send({ error: "unavailable", message: "simulation requires the mock adapter" });
+        .send({ error: "unavailable", message: "simulation requires a simulated chain" });
     }
     const swap = lookup(request.params);
     if (!swap) return notFound(reply);
@@ -160,9 +169,18 @@ export async function registerPublicRoutes(
     }
 
     if (swap.direction === "swap_in") {
-      ctx.adapter.simulateOnchainDeposit(leg.depositAddress, leg.amountSats);
+      sim.simulateOnchainDeposit(leg.depositAddress, leg.amountSats);
     } else {
-      ctx.adapter.simulateOffchainPayment(leg.depositAddress, leg.amountSats);
+      // A swap_out leg is paid off-chain. When that leg is REAL there is
+      // nothing to simulate — the user must send actual sats to the address.
+      if (ctx.adapter.capabilities.offchainReal) {
+        return reply.code(409).send({
+          error: "real_leg",
+          message:
+            "this leg settles for real on the Tachi ledger — pay the address shown; there is nothing to simulate",
+        });
+      }
+      sim.simulateOffchainPayment(leg.depositAddress, leg.amountSats);
     }
     await deps.pokePoller();
 

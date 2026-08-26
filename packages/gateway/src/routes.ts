@@ -18,7 +18,7 @@ import {
   type Lp,
   type SwapDirection,
 } from "@opensluice/shared";
-import { MockSettlementAdapter } from "@opensluice/adapter";
+import { MockSettlementAdapter, TachiRealSettlementAdapter } from "@opensluice/adapter";
 import type { GatewayConfig } from "./config";
 import { isDbHealthy } from "./db";
 import { bestRateLpId, buildBook, generateLpApiKey, hashLpApiKey } from "./domain/lps";
@@ -102,6 +102,9 @@ export async function registerRoutes(app: FastifyInstance, deps: RouteDeps): Pro
     ok: true,
     adapterMode: config.adapterMode,
     dbOk: isDbHealthy(ctx.repo.db),
+    // One source of truth for what actually settles. The UI banner, the README
+    // and INTEGRATION.md all describe this object rather than restating it.
+    settlement: ctx.adapter.capabilities,
   }));
 
   // ---- operator API (bearer auth with the operator key) ---------------------
@@ -389,14 +392,30 @@ export async function registerRoutes(app: FastifyInstance, deps: RouteDeps): Pro
   await app.register(async (dev) => {
     dev.addHook("onRequest", requireOperatorKey);
 
+    /**
+     * The simulated chain these routes drive. In mock mode that is the whole
+     * adapter; in tachi mode it is the embedded L1 the real adapter already
+     * admits is simulated. Either way, nothing here can move real value.
+     */
     const requireMock = (reply: FastifyReply): MockSettlementAdapter | null => {
       if (ctx.adapter instanceof MockSettlementAdapter) return ctx.adapter;
+      if (ctx.adapter instanceof TachiRealSettlementAdapter) return ctx.adapter.simulatedL1();
       void reply
         .code(409)
-        .send({ error: "unavailable", message: "simulation requires the mock adapter" });
+        .send({ error: "unavailable", message: "simulation requires a simulated chain" });
       return null;
     };
 
+    /**
+     * Credit an LP so it can front swaps.
+     *
+     * In mock mode this is a bookkeeping entry and nothing more. In real
+     * (tachi) mode an off-chain credit must be backed by sats that actually
+     * exist inside Tachi, so the route performs a REAL ledger transfer from the
+     * operator float to the LP's own derived account first, and books the row
+     * only if that transfer commits. On-chain credits stay bookkeeping-only in
+     * both modes, because L1 legs are simulated (see INTEGRATION.md).
+     */
     dev.post("/api/lp/fund", async (request, reply) => {
       const body = parseOr400(fundLpSchema, request.body, reply);
       if (!body) return reply;
@@ -404,17 +423,39 @@ export async function registerRoutes(app: FastifyInstance, deps: RouteDeps): Pro
       if (!lp) {
         return reply.code(404).send({ error: "not_found", message: `LP ${body.lpId} not found` });
       }
+      const amountSats = parseSats(body.amountSats);
+
+      let settlement: Record<string, unknown> | undefined;
+      const adapter = ctx.adapter;
+      if (body.chain === "offchain" && adapter instanceof TachiRealSettlementAdapter) {
+        try {
+          const funded = await adapter.fundOffchainAccount({ ref: `lp:${lp.id}`, amountSats });
+          settlement = { real: true, ...funded, chainId: adapter.capabilities.chainId };
+        } catch (err) {
+          // Never book an off-chain credit whose sats did not move.
+          return reply.code(502).send({
+            error: "settlement_failed",
+            message: `real off-chain funding failed, no ledger row written: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          });
+        }
+      } else if (body.chain === "onchain" && adapter.capabilities.onchainReal === false && config.adapterMode === "tachi") {
+        settlement = { real: false, note: "L1 legs are simulated in this build — see INTEGRATION.md" };
+      }
+
       const entry = ctx.repo.insertLedgerEntry({
         lpId: lp.id,
         chain: body.chain,
         entryType: "fund",
-        amountSats: parseSats(body.amountSats),
+        amountSats,
       });
       return reply.code(201).send({
         lpId: lp.id,
         chain: entry.chain,
         amountSats: entry.amountSats.toString(),
         balanceSats: ctx.repo.ledgerBalance(lp.id, body.chain).toString(),
+        ...(settlement ? { settlement } : {}),
       });
     });
 

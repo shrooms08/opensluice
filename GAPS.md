@@ -77,6 +77,41 @@ Things the system does not solve yet, in rough order of how much they matter.
   dashboard, but no push channel — a webhook per LP is still missing; exposure changes
   are only as fresh as the last poll.
 
+## Real (tachi) mode
+
+These apply only with `ADAPTER_MODE=tachi`. Everything above still applies too.
+
+- **Bitcoin L1 legs are simulated.** Not a shortcut we chose: Tachi has no
+  on-the-fly ledger→L1 exit yet (quoted in INTEGRATION.md §2). `sendOnchain`,
+  `pollOnchain` and `createOnchainDepositAddress` run against an embedded mock and
+  log every call as simulated. A swap therefore has one real half and one
+  simulated half, and `capabilities.onchainReal` is the single flag that says so.
+- **Custody: the coordinator can spend an LP's balance.** Every LP account is a
+  key derived from the coordinator's one mnemonic. An LP holds an entitlement in
+  `lp_ledger` plus sats under a key it does not control. Removing that assumption
+  needs LP-owned keys with a delegated or co-signed spend path — INTEGRATION.md
+  §5 question 2.
+- **`lp_ledger` and real Tachi balances are two books, reconciled by nobody.**
+  The ledger tracks what each LP is owed inside the coordinator; the coordinator's
+  keys hold the pooled float that actually pays. They are expected to diverge (the
+  e2e output shows it plainly), and nothing detects or repairs a divergence. A real
+  deployment needs a reconciliation sweep that compares the two and halts quoting
+  when they disagree beyond fees.
+- **Paying a split swap is serialised by the ledger.** A wallet cannot spend its
+  own change while that change is pending (`code=5 vtxo already pending in
+  mempool`), so a user paying an N-leg swap must wait for each payment to commit
+  before making the next. Nothing in the UI explains that wait yet.
+- **The off-chain poller re-scans one block on every tick.** The watermark is
+  `height - 1` so a block committing mid-tick cannot be skipped; the cost is that
+  the last block is re-read each time. Correct, but not efficient at scale.
+- **`watch()` is verified but unused.** It streams pending→committed correctly
+  (smoke record §9) and would cut detection latency, but polling stays
+  authoritative because a dropped WebSocket frame during a restart must not be
+  able to lose a payment. Wiring it as a supplement is left open.
+- **No fee strategy.** Off-chain transfers use `getFeeEstimate` clamped to a
+  1-sat floor. There is no bumping, no batching of several legs into one
+  transaction, and no accounting for the fee against the LP's margin.
+
 ## Operational
 
 - **Late confirmations after a terminal swap are recorded, never credited** — the

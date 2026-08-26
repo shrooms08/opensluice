@@ -40,7 +40,20 @@ export interface App {
  * started here so tests can drive `poller.tick()` deterministically.
  */
 export async function createApp(config: GatewayConfig, overrides: AppOverrides = {}): Promise<App> {
-  const adapter = overrides.adapter ?? createAdapter({ mode: config.adapterMode });
+  // The adapter is built before Fastify exists, so its boot log goes to a shim
+  // that simply prints — the adapter's connection banner is worth seeing early.
+  const app0 = {
+    log: {
+      info: (meta: Record<string, unknown>, msg: string) =>
+        console.log(`[adapter] ${msg}`, Object.keys(meta).length ? meta : ""),
+    },
+  };
+  const adapter =
+    overrides.adapter ??
+    createAdapter({
+      mode: config.adapterMode,
+      tachi: config.tachi ? { ...config.tachi, log: (msg, meta) => app0.log.info(meta ?? {}, msg) } : undefined,
+    });
   await adapter.init();
 
   const db = overrides.db ?? openDb(config.dbPath);

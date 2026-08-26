@@ -5,7 +5,7 @@ import {
   DEFAULT_SSE_HEARTBEAT_MS,
   DEFAULT_WEBHOOK_SWEEP_INTERVAL_MS,
 } from "@opensluice/shared";
-import type { AdapterMode } from "@opensluice/adapter";
+import type { AdapterMode, TachiAdapterConfig } from "@opensluice/adapter";
 
 /** Production build output of apps/web, served by @fastify/static. */
 const DEFAULT_WEB_DIST = fileURLToPath(new URL("../../../apps/web/dist", import.meta.url));
@@ -36,6 +36,8 @@ export interface GatewayConfig {
   sseHeartbeatMs: number;
   /** Directory holding the built swap app (apps/web/dist). */
   webDistPath: string;
+  /** Present only when ADAPTER_MODE=tachi: the real off-chain settlement config. */
+  tachi?: TachiAdapterConfig;
 }
 
 function intFromEnv(env: NodeJS.ProcessEnv, key: string, fallback: number): number {
@@ -74,6 +76,32 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): GatewayConfig 
     );
   }
 
+  // Real Tachi settlement. Off-chain legs are real; L1 legs stay simulated
+  // (see INTEGRATION.md) — the adapter reports that through its capabilities.
+  let tachi: TachiAdapterConfig | undefined;
+  if (adapterMode === "tachi") {
+    const mnemonic = env.OPENSLUICE_TACHI_MNEMONIC;
+    if (!mnemonic) {
+      throw new Error(
+        "ADAPTER_MODE=tachi requires OPENSLUICE_TACHI_MNEMONIC (BIP-39). " +
+          "Run `npm run smoke:tachi` first — it generates and funds one on regtest.",
+      );
+    }
+    const rawNetwork = env.OPENSLUICE_TACHI_NETWORK ?? "regtest";
+    if (rawNetwork !== "regtest" && rawNetwork !== "signet") {
+      throw new Error(`OPENSLUICE_TACHI_NETWORK must be "regtest" or "signet", got ${JSON.stringify(rawNetwork)}`);
+    }
+    tachi = {
+      rpcUrl: env.OPENSLUICE_TACHI_RPC_URL ?? "https://rpc-regtest.tachibtc.com",
+      network: rawNetwork,
+      mnemonic,
+      statePath: env.OPENSLUICE_TACHI_STATE_PATH ?? "./tachi-adapter-state.json",
+      apiKey: env.OPENSLUICE_TACHI_API_KEY,
+      useWatch: env.OPENSLUICE_TACHI_USE_WATCH === "true",
+    };
+  }
+
+
   return {
     operatorKey,
     webhookSecret,
@@ -92,10 +120,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): GatewayConfig 
       "WEBHOOK_SWEEP_INTERVAL_MS",
       DEFAULT_WEBHOOK_SWEEP_INTERVAL_MS,
     ),
-    devRoutesEnabled: env.NODE_ENV !== "production" && adapterMode === "mock",
+    // Operator dev routes stay available in tachi mode: `/api/lp/fund` is how
+    // an operator moves REAL off-chain value to an LP. The simulate/mine routes
+    // inside it still check for the mock adapter themselves.
+    devRoutesEnabled: env.NODE_ENV !== "production",
     devPublicSimulate:
       rawSimulate === "true" && adapterMode === "mock" && env.NODE_ENV !== "production",
     sseHeartbeatMs: intFromEnv(env, "SSE_HEARTBEAT_MS", DEFAULT_SSE_HEARTBEAT_MS),
     webDistPath: env.OPENSLUICE_WEB_DIST ?? DEFAULT_WEB_DIST,
+    tachi,
   };
 }

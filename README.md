@@ -13,10 +13,41 @@ swap across up to three providers when no single one can cover it. Users get pla
 language and real numbers; providers get a console that speaks in timelocks, exposure and
 basis points.
 
-**Status:** feature-complete against a **mock settlement adapter**. The engine, router,
-ledger, state machines and all four surfaces are real and tested; no Bitcoin moves and
-there is no live Tachi integration yet — see [INTEGRATION.md](INTEGRATION.md) for the
-method-by-method plan and the open questions.
+**Status:** feature-complete, and **settling real off-chain value on Tachi**. With
+`ADAPTER_MODE=tachi` every leg that moves value inside Tachi is a real signed, committed
+ledger transaction on `tachi-regtest-1`; Bitcoin L1 legs are simulated and labelled as
+such, because Tachi has no on-the-fly ledger→L1 exit yet. The mock adapter remains the
+default and the test/demo/CI mode. Evidence:
+[`docs/tachi-smoke-output.md`](docs/tachi-smoke-output.md) (verbatim daemon responses)
+and [`docs/tachi-e2e-output.md`](docs/tachi-e2e-output.md) (three real swaps, with
+transaction ids). The boundary is quoted and explained in
+[INTEGRATION.md](INTEGRATION.md).
+
+## Settlement modes
+
+| | `ADAPTER_MODE=mock` (default) | `ADAPTER_MODE=tachi` |
+|---|---|---|
+| Off-chain legs (Tachi ledger) | simulated | **real** — derived taproot addresses, `getAddressVtxos` detection, signed TRANSFERs verified to `code === 0` **and** block commit |
+| On-chain legs (Bitcoin L1) | simulated | simulated, and logged as such on every call |
+| swap_out | fully simulated | user's payment leg **real**; LP's L1 payout simulated |
+| swap_in | fully simulated | user's L1 deposit simulated; LP's payout to the user **real** |
+| LP funding | ledger bookkeeping | **real** transfer, operator float → LP account; the ledger row is written only if it commits |
+| Demo pay-leg buttons | available | refused — the gateway will not boot with `OPENSLUICE_DEV_PUBLIC_SIMULATE=true` outside mock mode |
+| Used by | `npm test`, the demo, CI | `npm run e2e:tachi` |
+
+What is running is never inferred from the mode string: the adapter reports
+`settlement: { onchainReal, offchainReal, label, chainId }` on `GET /healthz`, and the
+UI's settlement bar, this table and INTEGRATION.md all describe that one object.
+
+```sh
+# real off-chain settlement on regtest
+npm run smoke:tachi     # generates + funds a wallet, records every daemon response
+npm run e2e:tachi       # three real swaps through a real gateway
+
+ADAPTER_MODE=tachi \
+OPENSLUICE_TACHI_MNEMONIC="$(jq -r .mnemonic .tachi-smoke-state.json)" \
+OPENSLUICE_OPERATOR_KEY=... OPENSLUICE_WEBHOOK_SECRET=... npm run dev
+```
 
 ## What the bounty asked for, and where it lives
 
@@ -32,7 +63,7 @@ method-by-method plan and the open questions.
 
 ```sh
 npm install
-npm test                # 170 tests: router, state machines, adapter, auth, LP isolation, e2e, SSE, UI
+npm test                # 197 tests: router, state machines, adapter, auth, LP isolation, e2e, SSE, UI
 npm run typecheck
 npm run build           # builds apps/web into apps/web/dist (gateway serves it)
 
@@ -235,7 +266,7 @@ in ~1s), the LP pays on-chain, and the leg settles after 3 mock confirmations.
 - `POST /api/lps` (operator) — register LP, returns the API key once
 - `GET /api/lps`, `PATCH /api/lps/:id` (operator) — list, pause/reactivate
 - `PUT /api/lp/liquidity` (LP key) — set capacity/fees/min/max/est per direction
-- `POST /api/lp/fund` (operator, dev/mock only) — credit an LP's mock ledger
+- `POST /api/lp/fund` (operator, non-production) — credit an LP. In mock mode a ledger row; in tachi mode a **real** off-chain transfer to the LP's account, booked only if it commits
 - `GET /api/marketplace` (public) — the live book, capacity net of in-flight locks, per-direction `bestRate` marker computed server-side
 - `POST /api/quotes` (public) — route an amount; 409 + `maxRoutableSats` when the book can't cover it
 - `POST /api/swaps` (public) — accept a quote: re-validate, lock, return per-leg payment instructions; optional `webhookUrl` (HMAC-signed `X-OpenSluice-Signature`, retried with backoff)
@@ -281,10 +312,14 @@ See [docs/screenshots/](docs/screenshots/) for the slots and what each must show
 
 ## Limitations, stated plainly
 
-- **Settlement is mocked.** `ADAPTER_MODE=tachi` exists as a documented scaffold that
-  refuses to boot. No real Bitcoin moves. The blocker is receiver-side VTXO detection —
-  [INTEGRATION.md](INTEGRATION.md) has the method-by-method plan, what Tachi answers
-  today, and what each open question unblocks.
+- **Bitcoin L1 legs are simulated, in every mode.** Off-chain settlement is real under
+  `ADAPTER_MODE=tachi`, but no Bitcoin moves in either mode: Tachi has no on-the-fly
+  ledger→L1 exit yet, and the team confirmed a vault is currently the only vessel for L1
+  entry/exit. The adapter says so through `capabilities.onchainReal: false` rather than
+  through prose. See [INTEGRATION.md](INTEGRATION.md).
+- **Real mode is custodial.** The coordinator's mnemonic controls the operator float,
+  every LP account and every swap-leg key, so an LP's balance is sats under a key the
+  coordinator can spend. Fine for a regtest demonstration, not for real money.
 - **No LP fee payout.** Providers can see every sat they have earned, down to the leg,
   but there is no withdrawal path — fees accumulate as ledger balance and stay there.
 - **Single node, single operator, SQLite.** The coordinator is fully trusted: it books

@@ -15,6 +15,13 @@ import {
 } from "./types";
 
 export class TachiSettlementAdapter implements SettlementAdapter {
+  readonly capabilities = {
+    onchainReal: false,
+    offchainReal: false,
+    label: "tachi-stub",
+    chainId: null,
+  } as const;
+
   readonly mode = "tachi" as const;
 
   constructor(private readonly config: AdapterConfig) {

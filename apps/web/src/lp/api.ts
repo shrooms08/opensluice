@@ -69,10 +69,19 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return (await res.json()) as T;
 }
 
+export interface SettlementCapabilities {
+  onchainReal: boolean;
+  offchainReal: boolean;
+  label: string;
+  chainId: string | null;
+}
+
 export interface Health {
   ok: boolean;
   adapterMode: string;
   dbOk: boolean;
+  /** What the running adapter actually settles — the banner reads this. */
+  settlement?: SettlementCapabilities;
 }
 
 export interface LiquidityOffer {

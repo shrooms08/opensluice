@@ -5,3 +5,5 @@ dist/
 *.db-wal
 .env
 .DS_Store
+.tachi-smoke-state.json
+.tachi-e2e-state.json

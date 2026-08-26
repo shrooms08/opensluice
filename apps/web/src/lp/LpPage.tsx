@@ -1,7 +1,15 @@
 import { useEffect, useState } from "react";
 import { LogoLockup } from "../shared/Logo";
 import { MockBanner } from "../shared/MockBanner";
-import { api, ApiError, clearKey, getStoredKey, storeKey, UNAUTHORIZED_EVENT } from "./api";
+import {
+  api,
+  ApiError,
+  clearKey,
+  getStoredKey,
+  storeKey,
+  UNAUTHORIZED_EVENT,
+  type SettlementCapabilities,
+} from "./api";
 import { useHashRoute, usePolling } from "./usePolling";
 import { Overview } from "./views/Overview";
 import { Liquidity } from "./views/Liquidity";
@@ -103,14 +111,14 @@ const VIEW_TITLES: Record<string, string> = {
 
 function Shell({ onLock }: { onLock: () => void }) {
   const route = useHashRoute();
-  const [adapterMode, setAdapterMode] = useState<string | null>(null);
+  const [settlement, setSettlement] = useState<SettlementCapabilities | null>(null);
 
   // The mock-settlement bar must survive gateway restarts and mode flips, so
   // it rides the same 5s poll rhythm as the data views.
   usePolling(async () => {
     try {
       const h = await api.health();
-      setAdapterMode(h.adapterMode);
+      setSettlement(h.settlement ?? null);
     } catch {
       /* health probe is best-effort; no banner if unreachable */
     }
@@ -164,7 +172,7 @@ function Shell({ onLock }: { onLock: () => void }) {
         </div>
       </aside>
       <main className="dash-main">{view}</main>
-      <MockBanner adapterMode={adapterMode} />
+      <MockBanner capabilities={settlement} />
     </div>
   );
 }

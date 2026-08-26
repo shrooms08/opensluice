@@ -23,11 +23,33 @@ export interface OffchainEvent {
 }
 
 /**
+ * What an adapter can actually settle. The point of this object is that no
+ * other layer gets to guess: the gateway surfaces it on /healthz, the UI banner
+ * renders from it, and the docs quote it. An adapter that simulates one leg has
+ * to say so here, in one place, rather than being described accurately in a
+ * README and inaccurately in a banner.
+ */
+export interface AdapterCapabilities {
+  /** True when the on-chain (Bitcoin L1) leg moves real value. */
+  onchainReal: boolean;
+  /** True when the off-chain (Tachi ledger) leg moves real value. */
+  offchainReal: boolean;
+  /** Short human label for the mode, e.g. "mock" or "tachi-regtest-1". */
+  label: string;
+  /** Chain id reported by the daemon once connected; null in mock mode. */
+  chainId: string | null;
+}
+
+/**
  * Both legs of a swap, one contract. Poll + cursor on each chain; addresses
- * must be watched before their events are reported. Modeled on OpenTill's
- * TachiAdapter: the mock is the shipping mode, "tachi" is a documented stub.
+ * must be watched before their events are reported. Two implementations ship:
+ * the mock (the test/demo/CI adapter, and the only fully-simulated one) and the
+ * real Tachi adapter (real off-chain settlement, simulated L1 — see its
+ * capabilities and INTEGRATION.md).
  */
 export interface SettlementAdapter {
+  /** Static description of what this adapter really settles. */
+  readonly capabilities: AdapterCapabilities;
   init(): Promise<void>;
   // on-chain leg
   createOnchainDepositAddress(ref: string): Promise<{ address: string }>;
@@ -44,6 +66,17 @@ export interface SettlementAdapter {
 
 export type AdapterMode = "mock" | "tachi";
 
+export interface TachiAdapterConfig {
+  rpcUrl: string;
+  network: "regtest" | "signet";
+  mnemonic: string;
+  statePath: string;
+  apiKey?: string;
+  /** Opt in to the WebSocket watch() supplement; polling stays authoritative. */
+  useWatch?: boolean;
+  log?: (msg: string, meta?: Record<string, unknown>) => void;
+}
+
 export interface AdapterConfig {
   mode: AdapterMode;
   /**
@@ -53,6 +86,15 @@ export interface AdapterConfig {
   mockBlockTimeMs?: number;
   /** How long a mock off-chain transfer takes to commit, ms. */
   mockOffchainCommitMs?: number;
+  /** Required when mode === "tachi". */
+  tachi?: TachiAdapterConfig;
+}
+
+export class InsufficientFundsError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InsufficientFundsError";
+  }
 }
 
 /** Blocks a deposit needs before the mock reports it `confirmed`. */
