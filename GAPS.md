@@ -86,11 +86,25 @@ These apply only with `ADAPTER_MODE=tachi`. Everything above still applies too.
   `pollOnchain` and `createOnchainDepositAddress` run against an embedded mock and
   log every call as simulated. A swap therefore has one real half and one
   simulated half, and `capabilities.onchainReal` is the single flag that says so.
+- **Funding only works below mainnet.** Every sat in this system enters through a
+  self-signed ledger deposit with no L1 backing — that is how `npm run fund:tachi`
+  fills the operator float, and every LP credit is a transfer out of that float.
+  The Tachi team has confirmed this is intended below mainnet: the L1 verification
+  gate is mainnet-only (INTEGRATION.md §5). So the funding path is legitimate on
+  regtest and signet, and **does not exist on mainnet**. There, ledger value could
+  only enter via an L1-backed deposit that each validator independently checks
+  against its own `bitcoind` — amount and block height/timestamp matching exactly —
+  and attests to, finalizing once attestations clear a threshold. Concretely, a
+  mainnet OpenSluice would need: real Bitcoin behind the operator float, a deposit
+  flow that waits on validator attestation rather than a single broadcast, and a
+  decision about whether LPs are funded by the coordinator at all or deposit their
+  own L1 sats directly — which is the same question as the custody gap below.
+  Nothing in the adapter is written for that today.
 - **Custody: the coordinator can spend an LP's balance.** Every LP account is a
   key derived from the coordinator's one mnemonic. An LP holds an entitlement in
   `lp_ledger` plus sats under a key it does not control. Removing that assumption
   needs LP-owned keys with a delegated or co-signed spend path — INTEGRATION.md
-  §5 question 2.
+  §5, "Still open" question 2.
 - **`lp_ledger` and real Tachi balances are two books, reconciled by nobody.**
   The ledger tracks what each LP is owed inside the coordinator; the coordinator's
   keys hold the pooled float that actually pays. They are expected to diverge (the

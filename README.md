@@ -65,7 +65,7 @@ liquidity in that direction. Both directions work fully on the mock demo and und
 **Custody caveat.** In real mode every LP account is a key derived from the coordinator's
 single mnemonic, so the coordinator can spend an LP's balance. That is acceptable for a
 regtest demonstration and not for real money; delegated LP-owned keys are an open question
-with the Tachi team (INTEGRATION.md §5, question 2).
+with the Tachi team (INTEGRATION.md §5, "Still open" question 2).
 
 ## Settlement modes
 
@@ -388,6 +388,15 @@ Check the operator and LP floats before a demo and refill from the faucet; a sma
 float runs dry quickly. A wallet paying a multi-leg swap must let each payment commit
 before making the next (`code=5 vtxo already pending in mempool`), so expect a split swap
 to take roughly a block per leg.
+
+`npm run fund:tachi` mints ledger value with a self-signed deposit that carries no L1
+backing. The Tachi team has confirmed this is intended below mainnet — the L1 verification
+gate is mainnet-only — so it is sanctioned testnet behaviour rather than a workaround, and
+**signet behaves the same way**, making a signet deployment feasible with this exact
+funding path (change `OPENSLUICE_TACHI_NETWORK` and the RPC URL). On mainnet the path does
+not exist: ledger value would have to enter through an L1-backed deposit attested by the
+validator set. See [INTEGRATION.md §5](INTEGRATION.md#5-questions-for-the-tachi-team) and
+[GAPS.md](GAPS.md).
 
 ## Screenshots
 

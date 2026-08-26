@@ -101,6 +101,9 @@ These were verified live, not read from docs:
   daemon three times in the smoke run (one deposit, two transfers). Payment ids
   are therefore stable from broadcast onward.
 - **Ledger deposits need `fee ≥ 1` sat** (fee 0 is rejected with code 8).
+- **A self-signed deposit with no L1 backing commits below mainnet.** Observed
+  in the smoke run and since confirmed as intended: the L1 verification gate is
+  mainnet-only (§5). This is what funds the operator float on regtest.
 - **Taproot addresses only** for VTXO queries; tx hex carries no `0x`.
 - **A wallet cannot spend its own change while that change is pending** —
   `code=5 vtxo already pending in mempool`. This bit the e2e when paying the
@@ -130,17 +133,54 @@ A provider must actually hold sats inside Tachi before it can front a swap.
 Getting sats into the operator float on regtest is the documented two-step from
 the smoke record: claim from `https://faucet.tachibtc.com/api/faucet` (an L1
 UTXO), then mint the matching ledger value with a self-signed
-`buildTachiTxDeposit`. `npm run e2e:tachi` does this automatically when the
-float runs low.
+`buildTachiTxDeposit`. `scripts/tachi-fund.ts` (`npm run fund:tachi`) does
+exactly this, and `npm run e2e:tachi` does it automatically when the float runs
+low.
+
+That self-signed deposit is **sanctioned testnet behaviour, not a workaround**.
+The Tachi team confirmed that the L1 verification gate is enabled only for
+mainnet, so below mainnet a deposit with no L1 backing is accepted by design —
+see §5. Both the operator float and every LP credit therefore rest on a
+deliberate testnet affordance rather than on a gap we found. What that costs us
+on mainnet is set out in the same section and in [GAPS.md](GAPS.md).
 
 On-chain LP credits stay bookkeeping-only in both modes, because L1 legs are
 simulated.
 
-## 5. Open questions for the Tachi team
+## 5. Questions for the Tachi team
 
-1. **On-the-fly ledger → L1 exit.** The one blocker for `onchainReal: true`. Is
-   the vault-less receiver exit real, and will there be an SDK builder for the
-   wire-level `TxWithdraw`? Everything else on our side is ready.
+### Answered
+
+**Self-signed deposits below mainnet — resolved.** *(Tachi team, Telegram,
+August 2026; paraphrased.)* Self-signed deposits carrying no L1 backing are
+accepted on **both regtest and signet**: the L1 verification gate is enabled
+only for mainnet. The sanctioned mechanism already exists in the code and is
+simply switched off below mainnet — each validator independently verifies a
+claimed deposit against its own `bitcoind`, requiring the amount and the block
+height/timestamp to match exactly, signs an attestation, and the deposit
+finalizes once those attestations clear a threshold.
+
+Three consequences for OpenSluice:
+
+1. **Our regtest funding path is legitimate.** `scripts/tachi-fund.ts` and the
+   operator LP-funding route (`POST /api/lp/fund`) both depend on this
+   affordance. They are using testnet as intended, not exploiting a missing
+   check.
+2. **Mainnet would need a different funding story.** Ledger value could only
+   enter through L1-backed deposits that validators attest to, which changes how
+   both the operator float and every LP are funded — see [GAPS.md](GAPS.md).
+3. **Signet is a viable target today.** Deposits reportedly behave identically
+   there, so a signet deployment works with the funding approach already in the
+   repo; only `OPENSLUICE_TACHI_NETWORK` and the RPC URL change.
+
+### Still open
+
+1. **The ledger → vault bridge.** The one blocker for `onchainReal: true`, and
+   the question that governs whether OpenSluice's L1 legs could ever be real. A
+   vault is currently the only vessel for L1 entry/exit (§2), and there is no
+   on-the-fly exit from the ledger. Will there be an SDK builder for the
+   wire-level `TxWithdraw`, and is the vault-less receiver exit real?
+   Everything else on our side is ready.
 2. **Sub-account / delegated ownership.** Today every LP account is a key
    derived from the coordinator's single mnemonic, so the coordinator can spend
    an LP's balance. Is there a supported way for an LP to own its VTXOs under
@@ -162,7 +202,7 @@ In real mode the coordinator's mnemonic controls the operator float, every LP
 account and every swap-leg key. An LP's balance is an entry in the coordinator's
 `lp_ledger` plus sats sitting under a key the coordinator can spend. That is
 acceptable for a regtest demonstration and is not acceptable for real money;
-question 2 above is the path out. See [GAPS.md](GAPS.md).
+§5's "Still open" question 2 is the path out. See [GAPS.md](GAPS.md).
 
 ## Sibling project
 
