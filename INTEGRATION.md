@@ -4,10 +4,9 @@
 `ADAPTER_MODE=tachi`, every leg that moves value *inside* Tachi is a real,
 signed, committed ledger transaction on `tachi-regtest-1`. Every leg that would
 cross to Bitcoin L1 is simulated, clearly labelled, and reported as such by the
-adapter itself — not because the protocol lacks a ledger→L1 route (it has one:
-lock a ledger VTXO into a vault with `TxLockForVault`, then take the vault exit
-already proven on L1) but because the shipped TypeScript SDK provides no builder
-for the lock step. See §2.
+adapter itself — because Tachi has **no ledger→L1 offboarding mechanism today**:
+no shipped transaction type moves a ledger VTXO to Bitcoin. That is a protocol
+gap, traced in Tachi's own source, not a gap in our tooling. See §2.
 
 The evidence is in this repository and reproducible:
 
@@ -44,7 +43,7 @@ rather than restating it, so they cannot drift apart.
 | `fundOffchainAccount(...)` | **REAL** | The same primitive, operator float → an LP's own derived account. This is how a provider comes to hold sats it can front. |
 | `createOnchainDepositAddress(ref)` | *simulated* | Returns a `mockbtc1q…` address — unmistakably not a Bitcoin address — and logs `SIMULATED L1 deposit address`. |
 | `pollOnchain(cursor)` | *simulated* | Mock confirmations, driven by the operator-only `/dev/advance-blocks` route. |
-| `sendOnchain(...)` | *simulated* | Logs `SIMULATED L1 payout — no Bitcoin moved` and returns a `mocktx_…` id. The real implementation locks the leg's ledger VTXO into a vault (`TxLockForVault`) and exits that vault to L1; blocked on an SDK builder for the lock step, not on the protocol (§2). |
+| `sendOnchain(...)` | *simulated* | Logs `SIMULATED L1 payout — no Bitcoin moved` and returns a `mocktx_…` id. There is no real implementation to write: no shipped Tachi transaction type offboards a ledger VTXO to L1 (§2). |
 
 ### What that means per direction
 
@@ -58,7 +57,7 @@ Either way, the leg that moves value inside Tachi is real. In the e2e run a
 user's real balance moved `7 596 → 8 795 sats`, matching the quoted receive of
 1 199 sats exactly.
 
-## 2. The L1 boundary — an SDK gap, not a protocol gap
+## 2. The L1 boundary — no ledger→L1 offboarding exists today
 
 **Correction (August 2026).** This section previously stated that a vault was
 the only vessel for L1 entry/exit and that no on-the-fly ledger→L1 exit existed.
@@ -67,9 +66,10 @@ has since set out the actual picture *(Telegram, August 2026; paraphrased)*:
 
 - **`TxVaultOpen`** registers an L1-funded vault directly against an **L1
   outpoint**. It never touches the ledger-VTXO pool at all.
-- **`TxLockForVault` / `TxUnlockFromVault`** are the real ledger→vault bridge:
-  they lock an existing ledger VTXO under a vault address and release it back.
-  This is the path for putting ordinary receipt VTXOs into vault custody.
+- **`TxLockForVault` / `TxUnlockFromVault`** were described as the real
+  ledger→vault bridge: locking an existing ledger VTXO under a vault address and
+  releasing it back. **This has since been traced in source and does not hold —
+  see the third correction below.**
 - **`TxWithdraw`** was described as a plain ledger→L1 exit needing no vault.
   **This has since been retracted — see the correction immediately below.**
 
@@ -96,25 +96,26 @@ It would look like a successful payout and silently be a no-op. That is the
 single worst failure mode this codebase could ship, and it is exactly what we
 would have built had we taken the earlier recommendation at face value.
 
-So the ledger→L1 route for a plain-key VTXO is **not** `TxWithdraw`. It is:
+At this point we concluded the route had to be `TxLockForVault` into a vault,
+then the vault exit already proven on L1. **That conclusion did not survive
+either — see the third correction below.**
 
-> merchant/leg receipts (plain-key ledger VTXOs) → **`TxLockForVault`** into a
-> vault → the vault exit path already proven on L1.
-
-The vault exit half is not speculative. The sibling project drove both exits for
-real on `tachi-regtest-1`: a **cooperative refund** with five validator partial
-signatures (`b78cdb628a118fdb95090601914dedbaab4ba3c895432fbb10ea7bf25982f86b`)
-and a **unilateral exit** with user signature only, sweeping 299 500 sats back to
-L1 (`5bb2960bf27b6715228abe784a47bbb354b3aff3d7182e352fec882a7a67d0c3`) — see
+The vault exit half is not speculative, and still is not. The sibling project
+drove both exits for real on `tachi-regtest-1`: a **cooperative refund** with
+five validator partial signatures
+(`b78cdb628a118fdb95090601914dedbaab4ba3c895432fbb10ea7bf25982f86b`) and a
+**unilateral exit** with user signature only, sweeping 299 500 sats back to L1
+(`5bb2960bf27b6715228abe784a47bbb354b3aff3d7182e352fec882a7a67d0c3`) — see
 [`../opentill/docs/tachi-vault-spike.md`](../opentill/docs/tachi-vault-spike.md).
-Cooperative refund is the normal payout path; unilateral exit is the sovereignty
-backstop. What that spike could not do was exit *earned* value, because
-`TxVaultOpen` binds an L1 outpoint rather than ledger VTXOs. `TxLockForVault` is
-the missing link between the two halves.
+What that spike could not do was exit *earned* value, because `TxVaultOpen` binds
+an L1 outpoint rather than ledger VTXOs. We assumed `TxLockForVault` was the
+missing link between the two halves. It is not.
 
-### `TxLockForVault` (0x06) — a real contract, even without a builder
+### `TxLockForVault` (0x06) — the wire contract Tachi gave us
 
-Tachi gave us the wire contract directly:
+Recorded because it is accurate as far as it goes, and because it is what the
+sibling project built against. What it omits is what the lock actually *does* —
+see the third correction below.
 
 - Same base fields as any transaction: inputs, outputs, fee, `pubKey`,
   `signature`, `nonce`.
@@ -132,46 +133,64 @@ Tachi gave us the wire contract directly:
 
 `TxUnlockFromVault` is the corresponding release path.
 
-### Why OpenSluice's L1 legs are still simulated
+### Third correction — the lock is a ledger-side flag, and the route does not exist
 
-The blocker is tooling, not the protocol — but it is a bigger piece of tooling
-than we thought a week ago. The shipped TypeScript SDK
-(`@tachibtc/tachi-sdk-ts` 0.2.1, `@tachibtc/taurus-vault-core` 0.3.3) ships **no
-builder for `TxLockForVault` or `TxUnlockFromVault`**. Unlike `TxWithdraw`,
-though, these are not dead ends: their contract is now specified (above), so
-they are implementable without a reference implementation to copy — a PSBT with
-one P2TR output, finalized, in `PSBTPayload`.
+*(Tachi team, Telegram, August 2026; paraphrased. They traced it in their own
+source after the sibling project's lock spike failed to get any variant
+accepted. Full transcript:
+[`../opentill/docs/tachi-lock-spike.md`](../opentill/docs/tachi-lock-spike.md).)*
 
-We can construct a `TRANSFER` because `buildSignedTransferHex` had a documented
-shape to copy and we verified it against the live daemon. A payout is a longer
-chain — lock into a vault, then exit that vault — and each link needs the same
-verification before a user's money depends on it. The sibling project is spiking
-the lock step now (`npm run spike:lock`; results will land in
-[`../opentill/docs/tachi-lock-spike.md`](../opentill/docs/tachi-lock-spike.md)).
-OpenSluice will adopt whatever that proves rather than guessing in parallel.
+- **`TxLockForVault` only flips a `Locked` flag on the VTXO.** It never
+  broadcasts anything to Bitcoin. The "bridge" moves no value across any
+  boundary; it marks a ledger row.
+- **`TxUnlockFromVault` mirrors it** — it clears the flag, and likewise touches
+  no L1.
+- **`TxWithdraw` has no handler at all** (the second correction, above).
 
-Until then `sendOnchain` stays simulated and says so on every call:
+Put together: **there is no daemon-side mechanism that pays out on Bitcoin L1
+against a ledger VTXO, by any route.** Not `TxWithdraw`, not lock-then-exit, not
+anything else currently shipped. Value that entered Tachi as a ledger VTXO
+cannot presently leave to L1.
+
+The vault exit itself is real — the sibling drove both halves on L1 for real —
+but it only ever spends the vault's **own L1 funding outpoint**. That is why
+`TxVaultOpen` binds an outpoint rather than ledger VTXOs, and why the vault
+spike could only exit money it had put in from L1 in the first place. There is
+no join between the two sides.
+
+### Why OpenSluice's L1 legs are simulated
+
+**This is a protocol gap, not an SDK gap.** An earlier revision of this section
+said the opposite; it was wrong, and the correction above is why. No builder,
+however well written, can produce a transaction the daemon has no handler for.
+
+So `sendOnchain` stays simulated and says so on every call:
 `capabilities.onchainReal` is `false`, the mock L1 hands out addresses that could
 never be mistaken for Bitcoin addresses, and the UI carries a persistent
 `PARTIAL` bar reading *"Off-chain settlement live on tachi-regtest-1 · L1 legs
 simulated"*.
 
-**What changes when the lock step is proven.** Only the three on-chain methods,
-and only inside the adapter:
+**What would have to ship first.** Not an SDK builder — a daemon-side offboarding
+mechanism: something that takes a ledger VTXO and produces a Bitcoin transaction
+paying an arbitrary L1 address. Whether that arrives as a working `TxWithdraw`
+handler, as a lock that genuinely moves value into a vault's L1 outpoint, or as
+something new, is Tachi's design call, not ours.
+
+**What changes on our side when it does.** Only the three on-chain methods, and
+only inside the adapter:
 
 1. `createOnchainDepositAddress` returns a real watched Bitcoin address.
 2. `pollOnchain` reads real confirmations — the daemon's Bitcoin RPC proxy
    already works (`scantxoutset` is exercised in the smoke record), so this is
    the smaller half.
-3. `sendOnchain` becomes a two-stage payout: `TxLockForVault` moves the leg's own
-   ledger VTXO into vault custody, then the already-proven vault exit pays the
-   user on L1 (cooperative refund normally, unilateral exit as the backstop). The
-   same discipline `sendOffchain` already applies carries over to both stages —
-   verify the verdict, wait for the commit, and only then report success.
+3. `sendOnchain` drives whatever the offboarding mechanism turns out to be,
+   applying the discipline `sendOffchain` already does: verify the verdict, wait
+   for the commit, and only then report success.
 
 Then `onchainReal` flips to `true` and the banner disappears on its own. Nothing
 outside the adapter changes: the router, the ledger, the state machines, the LP
-console and all 200 tests are adapter-agnostic.
+console and all 200 tests are adapter-agnostic. That much is unchanged by all
+three corrections — the seam held.
 
 ## 3. Hard-won facts the code depends on
 
@@ -265,24 +284,31 @@ which we had previously conflated into one missing capability:
 | Type | What it actually does |
 | --- | --- |
 | `TxVaultOpen` | Registers an **L1-funded** vault against an L1 outpoint. Never touches the ledger-VTXO pool. |
-| `TxLockForVault` / `TxUnlockFromVault` | **The ledger→vault bridge.** Locks an existing ledger VTXO under a vault address, and releases it back. This is how ordinary receipt VTXOs enter vault custody. |
+| `TxLockForVault` / `TxUnlockFromVault` | ~~The ledger→vault bridge.~~ **Retracted.** Traced in source: the lock only flips a `Locked` flag on the VTXO and broadcasts nothing to Bitcoin; the unlock mirrors it. No value crosses any boundary. |
 | `TxWithdraw` | ~~A plain ledger→L1 exit requiring no vault.~~ **Retracted.** Unimplemented beyond generic format checks — see below. |
 
-**Superseded (same month).** Tachi initially recommended `TxWithdraw` as the more
-direct answer to "real value in → real payout out". They then inspected their own
-source and withdrew that: `TxWithdraw` (0x05) has no special-case handling in
-consensus or mempool, no L1 broadcast and no destination-address semantics, so a
-payout built on it would commit and move nothing. The real route is
-`TxLockForVault` into a vault followed by the vault exit already proven on L1.
-§2 carries the full correction and the `TxLockForVault` wire contract.
+**Superseded twice, in the same month.** Tachi first recommended `TxWithdraw` as
+the direct answer to "real value in → real payout out", then inspected their
+source and withdrew it: the type has no handler, so a payout built on it would
+commit and move nothing. We then took `TxLockForVault` to be the route — and
+after the sibling's lock spike could not get any variant accepted, Tachi traced
+that in source too: the lock merely flips a `Locked` flag and never broadcasts
+to Bitcoin.
+
+**The settled position: there is no ledger→L1 offboarding mechanism today, by any
+route.** Vault exits work, but only against a vault's own L1 funding outpoint —
+there is no way to get ledger value into one. §2 carries all three corrections in
+sequence.
 
 This is why the sibling project's vault spike
 ([`../opentill/docs/tachi-vault-spike.md`](../opentill/docs/tachi-vault-spike.md))
 could only ever exit funds it had deposited itself: `TxVaultOpen` binds an L1
 outpoint, so a vault opened that way has no relationship to ledger VTXOs earned
-from receipts. `TxLockForVault` is the step that was missing, and we did not
-know it existed. OpenSluice ran no vault spike of its own; the finding is
-recorded here because it changes what this document had called impossible.
+from receipts. We took `TxLockForVault` to be the missing step; it is not, for
+the reason above. OpenSluice ran no spike of its own — the record is the
+sibling's
+([`../opentill/docs/tachi-lock-spike.md`](../opentill/docs/tachi-lock-spike.md)),
+and it is kept here because it settles what this document twice got wrong.
 
 **`TxVaultClose` (0x12) is defined but not wired.** The vault `State` field is
 hardcoded `"open"` because the closing/closed/breaching writer is not
@@ -301,25 +327,23 @@ from 1008 and justify downward, never upward from 1.
 
 ### Still open
 
-1. **An SDK builder for `TxLockForVault` / `TxUnlockFromVault`.** Now the only
-   blocker for `onchainReal: true`. The wire contract is specified (§2) and the
-   vault exit on the far side is already proven on L1, so this is implementable
-   rather than blocked — it just needs building and verifying against the live
-   daemon before a user's payout depends on it. The sibling project is spiking it
-   (`npm run spike:lock`). *(The earlier ask here — a payload reference for
-   `TxWithdraw` — is closed: there is nothing to reference, because the type is
-   unimplemented.)*
-2. **Sub-account / delegated ownership.** Today every LP account is a key
+*(The SDK-builder ask that stood here — first for `TxWithdraw`, then for
+`TxLockForVault` — is closed. Neither is a tooling problem: `TxWithdraw` has no
+handler, and the lock only sets a flag. What is missing is a daemon-side
+offboarding mechanism, which is Tachi's to design. Tracked in §2 rather than as
+an ask of ours.)*
+
+1. **Sub-account / delegated ownership.** Today every LP account is a key
    derived from the coordinator's single mnemonic, so the coordinator can spend
    an LP's balance. Is there a supported way for an LP to own its VTXOs under
    its *own* key while still authorising the coordinator to spend them for a
    specific swap leg (a co-signed or conditional spend)? That would remove the
    custody assumption in §6.
-3. **Spending pending change.** Is `code=5 vtxo already pending in mempool`
+2. **Spending pending change.** Is `code=5 vtxo already pending in mempool`
    intended and permanent? A wallet paying a 3-leg split currently has to
    serialise its payments across blocks, which makes a multi-leg swap noticeably
    slower than a single-leg one.
-4. **Nonce semantics under concurrency.** `getAccountNonce` is read immediately
+3. **Nonce semantics under concurrency.** `getAccountNonce` is read immediately
    before signing. If two legs of the same swap are paid from one key
    concurrently, is the second guaranteed to be rejected rather than silently
    reordered?
@@ -330,7 +354,7 @@ In real mode the coordinator's mnemonic controls the operator float, every LP
 account and every swap-leg key. An LP's balance is an entry in the coordinator's
 `lp_ledger` plus sats sitting under a key the coordinator can spend. That is
 acceptable for a regtest demonstration and is not acceptable for real money;
-§5's "Still open" question 2 is the path out. See [GAPS.md](GAPS.md).
+§5's "Still open" question 1 is the path out. See [GAPS.md](GAPS.md).
 
 ## Sibling project
 

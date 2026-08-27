@@ -81,24 +81,26 @@ Things the system does not solve yet, in rough order of how much they matter.
 
 These apply only with `ADAPTER_MODE=tachi`. Everything above still applies too.
 
-- **Bitcoin L1 legs are simulated — an SDK gap, not a protocol gap.** The route a
-  real `sendOnchain` needs does exist: lock the leg's ledger VTXO into a vault with
-  `TxLockForVault`, then exit that vault to L1 — and the exit half is already proven
-  on `tachi-regtest-1` by the sibling project, both cooperatively (five validator
-  signatures) and unilaterally. What is missing is a builder for the lock step: the
-  shipped TS SDK has none for `TxLockForVault` / `TxUnlockFromVault`, though their
-  wire contract is now specified (INTEGRATION.md §2), so this is implementable
-  rather than blocked. So `sendOnchain`, `pollOnchain` and
-  `createOnchainDepositAddress` run against an embedded mock and log every call as
-  simulated; a swap has one real half and one simulated half, and
-  `capabilities.onchainReal` is the single flag that says so.
+- **Bitcoin L1 legs are simulated, because Tachi has no ledger→L1 offboarding
+  today.** Not a shortcut, and not a tooling gap: no shipped transaction type moves
+  a ledger VTXO to Bitcoin. `TxWithdraw` has no handler; `TxLockForVault` only flips
+  a `Locked` flag on the VTXO and broadcasts nothing; `TxUnlockFromVault` mirrors
+  it. Vault exits genuinely work on L1, but only against a vault's own L1 funding
+  outpoint, and nothing bridges ledger value into one — so value that entered Tachi
+  as a ledger VTXO cannot presently leave. There is therefore no real `sendOnchain`
+  to write: it, `pollOnchain` and `createOnchainDepositAddress` run against an
+  embedded mock and log every call as simulated. A swap has one real half and one
+  simulated half, and `capabilities.onchainReal` is the single flag that says so.
 
-  This entry has been wrong twice, in opposite directions, and both corrections are
-  worth keeping: it first claimed no ledger→L1 exit existed at all, then claimed
-  `TxWithdraw` was that exit. `TxWithdraw` (0x05) is in fact unimplemented beyond
-  generic format checks — no L1 broadcast, no destination semantics — so a payout
-  built on it would commit and move **nothing**, while appearing to succeed. We came
-  close to building exactly that.
+  This entry was wrong three times before it was right, and the sequence is kept in
+  INTEGRATION.md §2 rather than tidied away: first "no ledger→L1 exit exists"
+  (right conclusion, wrong reason), then "`TxWithdraw` is that exit" (a type with no
+  handler — a payout built on it would have committed and moved **nothing** while
+  appearing to succeed), then "`TxLockForVault` bridges into a vault" (it sets a
+  flag). Each correction came from Tachi reading their own source, the last after
+  the sibling project's lock spike could not get any variant accepted
+  (`../opentill/docs/tachi-lock-spike.md`). We came close to shipping the second
+  one.
 - **Vault liveness cannot be read from the daemon.** `TxVaultClose` (0x12) is
   defined but not wired: the vault `State` field is hardcoded `"open"` because the
   closing/closed/breaching writer is unimplemented, and there is no client-side
@@ -128,7 +130,7 @@ These apply only with `ADAPTER_MODE=tachi`. Everything above still applies too.
   key derived from the coordinator's one mnemonic. An LP holds an entitlement in
   `lp_ledger` plus sats under a key it does not control. Removing that assumption
   needs LP-owned keys with a delegated or co-signed spend path — INTEGRATION.md
-  §5, "Still open" question 2.
+  §5, "Still open" question 1.
 - **`lp_ledger` and real Tachi balances are two books, reconciled by nobody.**
   The ledger tracks what each LP is owed inside the coordinator; the coordinator's
   keys hold the pooled float that actually pays. They are expected to diverge (the
